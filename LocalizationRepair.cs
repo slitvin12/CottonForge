@@ -10,7 +10,7 @@ using UnityEngine;
 namespace CottonLibrary.Patches;
 
 
-internal class LocalizationRepair
+internal static class LocalizationRepair
 {
     public static void StartLoop() => MelonCoroutines.Start(RepairLoop());
     

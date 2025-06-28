@@ -29,3 +29,4 @@ Here's how it works:
 4. Right click on the file in your code editor and click `Properties`
 5. Change the Build Action to `Embedded Resource`
 6. Change all instances of `AddTranslation` in your code to use this new system.
+7. Add `AddLanguages` to the `EarlyInitializeMelon` function, (create one if needed) and put the name of your csv file without the `.csv` at the end as the parameter.
