@@ -25,12 +25,14 @@ public static class SaveDirectorPatch
         slimes = Get<IdentifiableTypeGroup>("SlimesGroup");
         baseSlimes = Get<IdentifiableTypeGroup>("BaseSlimeGroup");
         largos = Get<IdentifiableTypeGroup>("LargoGroup");
-        meat = Get<IdentifiableTypeGroup>("MeatGroup");
         food = Get<IdentifiableTypeGroup>("FoodGroup");
+        meat = Get<IdentifiableTypeGroup>("MeatGroup");
         veggies = Get<IdentifiableTypeGroup>("VeggieGroup");
         fruits = Get<IdentifiableTypeGroup>("FruitGroup");
+        nectar = Get<IdentifiableTypeGroup>("NectarFoodGroup");
         plorts = Get<IdentifiableTypeGroup>("PlortGroup");
         crafts = Get<IdentifiableTypeGroup>("CraftGroup");
+        chicks = Get<IdentifiableTypeGroup>("ChickGroup");
 
         foreach (CottonMod lib in mods)
         {

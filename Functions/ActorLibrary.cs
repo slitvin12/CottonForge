@@ -162,7 +162,7 @@ public static partial class Library
         
         return obj;
     }
-    public static GameObject CreateHenObject(IdentifiableType ident, Texture2D texture, Texture2D masks, out GameObject baitObject)
+    public static GameObject CreateHenObject(IdentifiableType ident, Texture2D texture, Texture2D masks, IdentifiableType babyIdent, Texture2D babyTexture, Texture2D babyMasks, out GameObject baitObject, out GameObject babyObject)
     {
         var obj = GetMeat("Hen").prefab.CopyObject();
         baitObject = GetMeat("Hen").gordoSnareBaitPrefab.CopyObject();
@@ -194,6 +194,32 @@ public static partial class Library
         {
             r.material = mat;
         }
+
+        babyObject = GetChick("Chick").prefab.CopyObject();
+
+        babyIdent.prefab = babyObject;
+        babyIdent.color = ident.color;
+        string name = ident.localizedName.GetLocalizedString().Split(' ')[0];
+        babyIdent.localizedName = AddTranslation($"{name} Chick", $"l.{name.ToLower()}_chick");
+        
+        babyObject.name = $"customFood{ident.name}Chick";
+        
+        var renderer2 = obj.GetComponentInChildren<SkinnedMeshRenderer>();
+        
+        
+        var mat2 = Object.Instantiate(renderer2.material);
+        mat2.SetTexture("_MainTex", babyTexture);
+        mat.SetTexture("_MaskMap", babyMasks);
+        renderer2.material = mat2;
+        foreach (var r in babyObject.GetComponentsInChildren<MeshRenderer>())
+        {
+            r.material = mat2;
+        }
+        
+        babyObject.SetObjectIdent(babyIdent);
+
+        var reproduce = obj.GetComponent<Reproduce>();
+        reproduce.ChildPrefab = babyObject;
         
         return obj;
     }
@@ -317,6 +343,23 @@ public static partial class Library
     public static IdentifiableType GetPlort(string name)
     {
         foreach (IdentifiableType type in plorts.GetAllMembersArray())
+            if (type.name.ToUpper() == name.ToUpper())
+                return type;
+
+        return null;
+    }
+    
+    public static IdentifiableType GetChick(string name)
+    {
+        foreach (IdentifiableType type in chicks.GetAllMembersArray())
+            if (type.name.ToUpper() == name.ToUpper())
+                return type;
+
+        return null;
+    }
+    public static IdentifiableType GetNectar(string name)
+    {
+        foreach (IdentifiableType type in chicks.GetAllMembersArray())
             if (type.name.ToUpper() == name.ToUpper())
                 return type;
 

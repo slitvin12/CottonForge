@@ -105,7 +105,7 @@ public static partial class Library
             }
         }
 
-        SlimeDiet slimeDiet = INTERNAL_CreateNewDiet();
+        SlimeDiet slimeDiet = CreateNewDiet();
         slimeDef.Diet = slimeDiet;
         slimeDef.color = vacColor;
         slimeDef.icon = icon;
@@ -1052,7 +1052,7 @@ public static partial class Library
     public static SlimeDiet MergeDiet(this SlimeDiet firstDiet, SlimeDiet secondDiet)
     {
 
-        var mergedDiet = INTERNAL_CreateNewDiet();
+        var mergedDiet = CreateNewDiet();
 
         mergedDiet.EatMap.AddListRangeNoMultiple(firstDiet.EatMap);
         mergedDiet.EatMap.AddListRangeNoMultiple(secondDiet.EatMap);
@@ -1197,29 +1197,23 @@ public static partial class Library
     public static void AddSlimeFoodGroup(this SlimeDefinition def, IdentifiableTypeGroup FG)
     {
         def.Diet.MajorFoodIdentifiableTypeGroups = def.Diet.MajorFoodIdentifiableTypeGroups.Add(FG);
-        def.Diet.MajorFoodIdentifiableTypeGroups = def.Diet.MajorFoodIdentifiableTypeGroups.Add(FG);
     }
 
-    internal static SlimeDiet INTERNAL_CreateNewDiet()
+    internal static SlimeDiet CreateNewDiet() => new SlimeDiet
     {
-        var diet = new SlimeDiet();
-
-        diet.ProduceIdents = new Il2CppReferenceArray<IdentifiableType>(0);
-        diet.FavoriteProductionCount = 2;
-        diet.EatMap = new Il2CppSystem.Collections.Generic.List<SlimeDiet.EatMapEntry>(0);
-        diet.FavoriteIdents = new Il2CppReferenceArray<IdentifiableType>(0);
-        diet.AdditionalFoodIdents = new Il2CppReferenceArray<IdentifiableType>(0);
-        diet.MajorFoodIdentifiableTypeGroups = new Il2CppReferenceArray<IdentifiableTypeGroup>(0);
-        diet.BecomesOnTarrifyIdentifiableType = Get<IdentifiableType>("Tarr");
-        diet.EdiblePlortIdentifiableTypeGroup = Get<IdentifiableTypeGroup>("EdiblePlortFoodGroup");
-
+        ProduceIdents = new Il2CppReferenceArray<IdentifiableType>(0),
+        FavoriteProductionCount = 2,
+        EatMap = new Il2CppSystem.Collections.Generic.List<SlimeDiet.EatMapEntry>(0),
+        FavoriteIdents = new Il2CppReferenceArray<IdentifiableType>(0),
+        AdditionalFoodIdents = new Il2CppReferenceArray<IdentifiableType>(0),
+        MajorFoodIdentifiableTypeGroups = new Il2CppReferenceArray<IdentifiableTypeGroup>(0),
+        BecomesOnTarrifyIdentifiableType = Get<IdentifiableType>("Tarr"),
+        EdiblePlortIdentifiableTypeGroup = Get<IdentifiableTypeGroup>("EdiblePlortFoodGroup"),
         // 0.6 - Unstable identifiables
-        diet.StableResourceIdentifiableTypeGroup = Get<IdentifiableTypeGroup>("StableResourcesGroup");
-        diet.UnstableResourceIdentifiableTypeGroup = Get<IdentifiableTypeGroup>("UnstableResourcesGroup");
-        diet.UnstablePlort = GetPlort("UnstablePlort");
-
-        return diet;
-    }
+        StableResourceIdentifiableTypeGroup = Get<IdentifiableTypeGroup>("StableResourcesGroup"),
+        UnstableResourceIdentifiableTypeGroup = Get<IdentifiableTypeGroup>("UnstableResourcesGroup"),
+        UnstablePlort = GetPlort("UnstablePlort")
+    };
 
     public static SlimeDefinition GetSlime(string name)
     {
@@ -1448,29 +1442,24 @@ public static partial class Library
         }
     }
 
-    static bool Where_map_GetEatMap1(SlimeDiet.EatMapEntry map, string group)
-    {
-        if (map == null) return false;
-        if (map.EatsIdent == null) return false;
-        return map.EatsIdent.name.Contains(group);
-    }
-
-    static bool Where_map_GetEatMap2(SlimeDiet.EatMapEntry map, IdentifiableTypeGroup group)
-    {
-        if (map == null) return false;
-        if (map.EatsIdent == null) return false;
-        if (group == null) return false;
-        var members = group.GetAllMembers();
-        if (members == null) return false;
-
-        return members.Contains(map.EatsIdent);
-    }
 
     public static SlimeDiet.EatMapEntry[] GetEatMapsByName(SlimeDiet diet, string group) =>
-        diet?.EatMap?._items.Where(map => Where_map_GetEatMap1(map, group)).ToArray();
+        diet?.EatMap?._items.Where(map => { 
+            if (map == null) return false;
+            if (map.EatsIdent == null) return false;
+            return map.EatsIdent.name.Contains(group);
+        }).ToArray();
 
     public static SlimeDiet.EatMapEntry[] GetEatMapsByIdentifiableGroup(SlimeDiet diet, IdentifiableTypeGroup group) =>
-        diet?.EatMap?._items.Where(map => Where_map_GetEatMap2(map, group)).ToArray();
+        diet?.EatMap?._items.Where(map => { 
+            if (map == null) return false;
+            if (map.EatsIdent == null) return false;
+            if (group == null) return false;
+            var members = group.GetAllMembers();
+            if (members == null) return false;
+
+            return members.Contains(map.EatsIdent);
+        }).ToArray();
 
     public static IdentifiableType CreateGordoType(string name, Sprite icon, LocalizedString localizedName,
         string refID)

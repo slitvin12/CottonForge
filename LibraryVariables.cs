@@ -38,9 +38,12 @@ public static partial class Library
     public static IdentifiableTypeGroup? baseSlimes;
     public static IdentifiableTypeGroup? food;
     public static IdentifiableTypeGroup? meat;
+    public static IdentifiableTypeGroup? nectar;
     public static IdentifiableTypeGroup? veggies;
     public static IdentifiableTypeGroup? fruits;
-    public static IdentifiableTypeGroup? crafts;
+    public static IdentifiableTypeGroup? crafts;   
+    public static IdentifiableTypeGroup? chicks;
+
     public static GameObject? player;
 
     // public enum VanillaPediaEntryCategories { TUTORIAL, SLIMES, RESOURCES, WORLD, RANCH, SCIENCE, WEATHER }
