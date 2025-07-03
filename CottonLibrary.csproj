@@ -534,4 +534,8 @@
     <None Remove="ColorSlimes\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Save\" />
+  </ItemGroup>
+
 </Project>

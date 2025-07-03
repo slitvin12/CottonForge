@@ -200,8 +200,6 @@ public static partial class Library
 
         babyIdent.prefab = babyObject;
         babyIdent.color = ident.color;
-        string name = ident.localizedName.GetLocalizedString().Split(' ')[0];
-        babyIdent.localizedName = AddTranslation($"{name} Chick", $"l.{name.ToLower()}_chick");
         
         babyObject.name = $"customFood{ident.name}Chick";
         
@@ -361,7 +359,7 @@ public static partial class Library
     }
     public static IdentifiableType GetNectar(string name)
     {
-        foreach (IdentifiableType type in chicks.GetAllMembersArray())
+        foreach (IdentifiableType type in nectar.GetAllMembersArray())
             if (type.name.ToUpper() == name.ToUpper())
                 return type;
 

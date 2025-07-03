@@ -5,6 +5,8 @@
 /obj
 /TestMod/bin
 /TestMod/obj
+/ColorSlimes/bin
+/ColorSlimes/obj
 /PureLargosSR2/bin
 /PureLargosSR2/obj
 *.dll
