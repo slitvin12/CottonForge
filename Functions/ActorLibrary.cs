@@ -203,12 +203,12 @@ public static partial class Library
         
         babyObject.name = $"customFood{ident.name}Chick";
         
-        var renderer2 = obj.GetComponentInChildren<SkinnedMeshRenderer>();
+        var renderer2 = babyObject.GetComponentInChildren<SkinnedMeshRenderer>();
         
         
         var mat2 = Object.Instantiate(renderer2.material);
         mat2.SetTexture("_MainTex", babyTexture);
-        mat.SetTexture("_MaskMap", babyMasks);
+        mat2.SetTexture("_MaskMap", babyMasks);
         renderer2.material = mat2;
         foreach (var r in babyObject.GetComponentsInChildren<MeshRenderer>())
         {
