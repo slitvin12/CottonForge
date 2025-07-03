@@ -15,6 +15,7 @@ public class CottonMain : MelonMod
 {
     public override void OnLateInitializeMelon()
     {
+        AddLanguages("internalTranslations");
 
         foreach (MelonBase melonBase in MelonBase.RegisteredMelons)
         {
@@ -22,7 +23,6 @@ public class CottonMain : MelonMod
             {
                 CottonMod mod = melonBase as CottonMod;
                 mods.Add(mod);
-                MelonLogger.Msg("Cotton registered mod: " + mod.MelonAssembly.Assembly.FullName);
             }
         }
         if (Get("SR2ELibraryROOT")) { rootOBJ = Get("CottonLibraryROOT"); }
@@ -39,9 +39,15 @@ public class CottonMain : MelonMod
     {
         switch (sceneName)
         {
-            case "GameCore":
+            case "GameCore":             
+                MelonLogger.Msg(LoadLocalizedText("lib.registered_list"));
+
                 foreach (CottonMod mod in mods)
+                {          
+                    MelonLogger.Msg(LoadLocalizedText("lib.registered", mod.MelonAssembly.Assembly.FullName));
+
                     mod.OnGameCoreLoaded();
+                }
                 break;
             case "ZoneCore":
                 foreach (CottonMod mod in mods)
@@ -50,6 +56,7 @@ public class CottonMain : MelonMod
             case "SystemCore":
                 foreach (CottonMod mod in mods)
                     mod.OnSystemSceneLoaded();
+                
                 LocalizationRepair.StartLoop();
                 break;
             case "PlayerCore":

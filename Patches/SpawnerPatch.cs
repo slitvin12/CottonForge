@@ -7,9 +7,10 @@ using UnityEngine;
 
 namespace CottonLibrary.Patches;
 
-[HarmonyPatch(typeof(DirectedActorSpawner), nameof(DirectedActorSpawner.Awake))]
+[HarmonyPatch(typeof(DirectedActorSpawner))]
 public class SpawnerPatch
 {
+    [HarmonyPatch(nameof(DirectedActorSpawner.Awake))]
     [HarmonyPostfix]
     static void PostAwake(DirectedActorSpawner __instance)
     {
@@ -18,21 +19,19 @@ public class SpawnerPatch
             action(__instance);
         }
     }
-}
-//[HarmonyPatch(typeof(DirectedActorSpawner), nameof(DirectedActorSpawner.MaybeReplaceId))]
-public class SpawnerPatch2
-{
+    
+    //[HarmonyPatch(nameof(DirectedActorSpawner.MaybeReplaceId))]
     //[HarmonyPrefix]
     static bool Replacement(DirectedActorSpawner __instance, ref IdentifiableType __result, IdentifiableType id)
     {
         if (!__instance) return false;
         if (__instance.WasCollected) return false;
         
-        foreach (var replacement in Library.spawnerReplacements)
+        foreach (var replacement in spawnerReplacements)
         {
             try
             {
-                if (Library.IsInZone(replacement.zones))
+                if (IsInZone(replacement.zones))
                 {
                     var chance = Randoms.SHARED.GetProbability(1f / replacement.chance);
                     if (chance)

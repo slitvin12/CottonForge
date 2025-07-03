@@ -23,13 +23,23 @@ public static partial class Library
     internal static Dictionary<string, LocalizedString> loadedLocalizedStrings = new Dictionary<string, LocalizedString>();
     internal static Dictionary<string, ModdedLocalizedText> moddedLocalizedStrings = new Dictionary<string, ModdedLocalizedText>();
         
-
+    /// <summary>
+    /// Loads a string from the modded language csv.
+    /// </summary>
+    /// <param name="key">The key for the text</param>
+    /// <returns>The text from the language selected in-game.</returns>
     public static string LoadLocalizedText(string key)
     {
         if (String.IsNullOrWhiteSpace(key) || !loadedLanguage.ContainsKey(key)) return key;
         return loadedLanguage[key];
     }
     
+    /// <summary>
+    /// Loads a string from the modded language csv.
+    /// </summary>
+    /// <param name="args">The arguments for the string.</param>
+    /// <param name="key">The key for the text</param>
+    /// <returns>The text from the language selected in-game.</returns>
     public static string LoadLocalizedText(string key, params object[] args)
     {
         if (String.IsNullOrWhiteSpace(key) || !loadedLanguage.ContainsKey(key)) return key;
@@ -45,10 +55,23 @@ public static partial class Library
         return translatedRaw;
     }
 
+    /// <summary>
+    /// Creates a LocalizedString from the <c>LoadLocalizedText</c> function.
+    /// </summary>
+    /// <param name="key">The key for the text</param>
+    /// <param name="table">The table to store the LocalizedString in</param>
+    /// <returns>A new LocalizedString</returns>
     public static LocalizedString CreateLocalizedString(string key, string table = "Actor"){
         return CreateLocalizedString(key, table, new object[0]);
     }
 
+    /// <summary>
+    /// Creates a LocalizedString from the <c>LoadLocalizedText</c> function.
+    /// </summary>
+    /// <param name="key">The key for the text</param>
+    /// <param name="table">The table to store the LocalizedString in</param>
+    /// <param name="args">The arguments for the LocalizedString.</param>
+    /// <returns>A new LocalizedString</returns>
     public static LocalizedString CreateLocalizedString(string key, string table = "Actor", params object[] args){
 
             LocalizedString localizedString = CreateStaticString(LoadLocalizedText(key, args), key, table);
@@ -122,22 +145,29 @@ public static partial class Library
             languages[langCode].Add(newLanguage.Value);
         }
     }
-    public static void LoadLanguage(string code)
+
+    internal static void LoadLanguage(string code)
     {
         loadedLanguage = new Dictionary<string, string>();
         if (defaultLang == null)
         {
             defaultLang = new Dictionary<string, string>();
-            foreach (var languageDicts in languages["en"])
-                foreach (var translation in languageDicts) 
+
+            if (languages.TryGetValue("en", out var language))
+                foreach (var languageDicts in language)
+                foreach (var translation in languageDicts)
                     defaultLang[translation.Key] = translation.Value;
         }
+
         loadedLanguage = new Dictionary<string, string>(defaultLang);
-        if (code != "en") if (languages.ContainsKey(code))
-            foreach (var languageDicts in languages[code]) 
-                foreach (var translation in languageDicts)
-                    loadedLanguage[translation.Key] = translation.Value;
+        
+        if (code != "en")
+            if (languages.ContainsKey(code))
+                foreach (var languageDicts in languages[code])
+                    foreach (var translation in languageDicts) 
+                        loadedLanguage[translation.Key] = translation.Value;
     }
+
     /// <summary>
     /// Renamed from <c>AddTranslation</c> in 0.3.0
     /// </summary>

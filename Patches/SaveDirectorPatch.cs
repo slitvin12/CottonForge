@@ -64,7 +64,12 @@ public static class SaveDirectorPatch
         {
             largoAction();
         }
-
+        
+        foreach (CottonMod lib in mods)
+        {
+            lib.AutoLargosLoaded();
+        }
+        
         foreach (var category in Resources.FindObjectsOfTypeAll<PediaCategory>())
         {
             category.GetRuntimeCategory();

@@ -67,6 +67,18 @@ public static partial class Library
         SpawnLocations zones, float weight, SpawnerTypes spawnerTargets, SpawningMode mode,RequiredConditions requiredConditions) =>
         MakeSpawnableInZones(ident, timeWindow, zones, weight, spawnerTargets, mode, requiredConditions, Array.Empty<string>());
 
+    /// <summary>
+    /// Makes an Identifiable able to spawn.
+    /// </summary>
+    /// <param name="ident">The object's type</param>
+    /// <param name="timeWindow">The time of day the object will spawn in.</param>
+    /// <param name="zones">Which zones to spawn in.</param>
+    /// <param name="weight">The chance to spawn.</param>
+    /// <param name="spawnerTargets">Which spawner type to inject into.</param>
+    /// <param name="mode">Which spawning behavior to use.</param>
+    /// <param name="requiredConditions">Required conditions on when not to inject into a spawner.</param>
+    /// <param name="customZoneSceneNames">An array of custom scene names.</param>
+    /// <exception cref="InvalidOperationException">Occurs when an invalid SpawningMode is used. Should never happen.</exception>
     public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow,
         SpawnLocations zones, float weight, SpawnerTypes spawnerTargets, SpawningMode mode, 
         RequiredConditions requiredConditions, params string[] customZoneSceneNames)

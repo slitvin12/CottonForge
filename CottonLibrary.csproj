@@ -523,6 +523,8 @@
     <EmbeddedResource Remove="PureLargosSR2\**" />
     <EmbeddedResource Remove="Largordos\**" />
     <EmbeddedResource Remove="ColorSlimes\**" />
+    <None Remove="internalTranslations.csv" />
+    <EmbeddedResource Include="internalTranslations.csv" />
   </ItemGroup>
 
   <ItemGroup>

@@ -276,15 +276,16 @@ public static partial class Library
         Object.prefab = prefab;
     }
 
-    public static void SetObjectIdent(this GameObject prefab, IdentifiableType Object)
+    public static void SetObjectIdent(this GameObject prefab, IdentifiableType obj)
     {
-        if (Object is SlimeDefinition)
+        if (obj is SlimeDefinition)
         {
-            prefab.GetComponent<SlimeEat>().SlimeDefinition = (SlimeDefinition)Object;
-            prefab.GetComponent<SlimeAppearanceApplicator>().SlimeDefinition = (SlimeDefinition)Object;
+            prefab.GetComponent<SlimeEat>().SlimeDefinition = obj.TryCast<SlimeDefinition>();
+            prefab.GetComponent<SlimeAppearanceApplicator>().SlimeDefinition = obj.TryCast<SlimeDefinition>();
         }
 
-        prefab.GetComponent<IdentifiableActor>().identType = Object;
+        prefab.GetComponent<IdentifiableActor>().identType = obj;
+        obj.prefab = prefab;
     }
 
     public static IdentifiableType CreatePlortType(string Name, Color32 VacColor, Sprite Icon, string RefID,

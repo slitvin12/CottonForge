@@ -23,18 +23,13 @@ public class CottonModInstance<M> : CottonMod where M : CottonMod
 
 public abstract class CottonMod : MelonMod
 {
-    public Semver.SemVersion version
-    {
-        get
-        {
-            return Info.Version;
-        }
-    }
-    public static GameObject player { get { return Library.player; } set { Library.player = value; } }
-    public static SystemContext systemContext { get { return Library.systemContext; } }
-    public static GameContext gameContext { get { return Library.gameContext; } }
-    public static SceneContext sceneContext { get { return Library.sceneContext; } }
-    public static SlimeDefinitions slimeDefinitions { get { return Library.slimeDefinitions; } /*set { LibraryUtils.slimeDefinitions = value; }*/ }
+    public Semver.SemVersion Version => Info.Version;
+    
+    public static GameObject Player => Library.player;
+    public static SystemContext SystemContext => Library.systemContext;
+    public static GameContext GameContext => Library.gameContext;
+    public static SceneContext SceneContext => Library.sceneContext;
+    public static SlimeDefinitions SlimeDefinitions => Library.slimeDefinitions;
     public virtual void OnPlayerSceneLoaded() { }
 
     public virtual void OnSystemSceneLoaded() { }
@@ -50,7 +45,7 @@ public abstract class CottonMod : MelonMod
     /// </summary>
     public virtual void LateSaveDirectorLoaded() { }  
     /// <summary>
-    /// Kind of like <c>LateSaveDirectorLoaded</c> except it is called after all largos have been made.
+    /// An even later stage of loading than <c>LateSaveDirectorLoaded</c> 
     /// </summary>
     public virtual void AutoLargosLoaded() { }
 
