@@ -1,137 +1,155 @@
-using System.Reflection;
-using static CottonLibrary.Library;
-
+using System;
+using System.Collections.Generic;
 using Il2Cpp;
 using Il2CppInterop.Runtime.InteropTypes;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppMonomiPark.SlimeRancher;
+using Il2CppSystem;
+using Il2CppSystem.Collections.Generic;
 using Il2CppSystem.Linq;
+using Il2CppSystem.Reflection;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace CottonLibrary;
 
 public static class ExtentionLibrary
 {
-    public static Il2CppSystem.Type CPPTypeOf(this Type type)
+    public static Il2CppSystem.Type CPPTypeOf(this System.Type type)
     {
-        string typeName = type.AssemblyQualifiedName;
-
-        if (typeName.ToLower().StartsWith("il2cpp"))
+        string text = type.AssemblyQualifiedName;
+        if (text.ToLower().StartsWith("il2cpp"))
         {
-            typeName = typeName.Substring("il2cpp".Length);
+            text = text.Substring("il2cpp".Length);
         }
-
-        Il2CppSystem.Type il2cppType = Il2CppSystem.Type.GetType(typeName);
-
-        return il2cppType;
+        return Il2CppSystem.Type.GetType(text);
     }
 
     public static T getObjRec<T>(this GameObject obj, string name) where T : class
     {
-        var transform = obj.transform;
-
-        List<GameObject> totalChildren = GetAllChildren(transform);
-        for (int i = 0; i < totalChildren.Count; i++)
-            if (totalChildren[i].name == name)
+        System.Collections.Generic.List<GameObject> allChildren = obj.transform.GetAllChildren();
+        for (int i = 0; i < allChildren.Count; i++)
+        {
+            if (allChildren[i].name == name)
             {
                 if (typeof(T) == typeof(GameObject))
-                    return totalChildren[i] as T;
+                {
+                    return allChildren[i] as T;
+                }
                 if (typeof(T) == typeof(Transform))
-                    return totalChildren[i].transform as T;
-                if (totalChildren[i].GetComponent<T>() != null)
-                    return totalChildren[i].GetComponent<T>();
+                {
+                    return allChildren[i].transform as T;
+                }
+                if (allChildren[i].GetComponent<T>() != null)
+                {
+                    return allChildren[i].GetComponent<T>();
+                }
             }
-
+        }
         return null;
     }
 
-    public static List<GameObject> GetAllChildren(this GameObject obj)
+    public static System.Collections.Generic.List<GameObject> GetAllChildren(this GameObject obj)
     {
-        var container = obj.transform;
-        List<GameObject> allChildren = new List<GameObject>();
-        for (int i = 0; i < container.childCount; i++)
+        Transform transform = obj.transform;
+        System.Collections.Generic.List<GameObject> list = new System.Collections.Generic.List<GameObject>();
+        for (int i = 0; i < transform.childCount; i++)
         {
-            var child = container.GetChild(i);
-            allChildren.Add(child.gameObject);
-            allChildren.AddRange(GetAllChildren(child));
+            Transform child = transform.GetChild(i);
+            list.Add(child.gameObject);
+            list.AddRange(child.GetAllChildren());
         }
-
-        return allChildren;
+        return list;
     }
 
     public static T[] GetAllChildrenOfType<T>(this GameObject obj) where T : Component
     {
-        List<T> children = new List<T>();
-        foreach (var child in obj.GetAllChildren())
+        System.Collections.Generic.List<T> list = new System.Collections.Generic.List<T>();
+        foreach (GameObject allChild in obj.GetAllChildren())
         {
-            if (child.GetComponent<T>() != null)
+            if (allChild.GetComponent<T>() != null)
             {
-                children.Add(child.GetComponent<T>());
+                list.Add(allChild.GetComponent<T>());
             }
         }
-
-        return children.ToArray();
+        return list.ToArray();
     }
 
     public static T[] GetAllChildrenOfType<T>(this Transform obj) where T : Component
     {
-        List<T> children = new List<T>();
-        foreach (var child in obj.GetAllChildren())
+        System.Collections.Generic.List<T> list = new System.Collections.Generic.List<T>();
+        foreach (GameObject allChild in obj.GetAllChildren())
         {
-            if (child.GetComponent<T>() != null)
+            if (allChild.GetComponent<T>() != null)
             {
-                children.Add(child.GetComponent<T>());
+                list.Add(allChild.GetComponent<T>());
             }
         }
-
-        return children.ToArray();
+        return list.ToArray();
     }
 
     public static T GetObjRec<T>(this Transform transform, string name) where T : class
     {
-        List<GameObject> totalChildren = transform.GetAllChildren();
-        for (int i = 0; i < totalChildren.Count; i++)
-            if (totalChildren[i].name == name)
+        System.Collections.Generic.List<GameObject> allChildren = transform.GetAllChildren();
+        for (int i = 0; i < allChildren.Count; i++)
+        {
+            if (allChildren[i].name == name)
             {
                 if (typeof(T) == typeof(GameObject))
-                    return totalChildren[i] as T;
+                {
+                    return allChildren[i] as T;
+                }
                 if (typeof(T) == typeof(Transform))
-                    return totalChildren[i].transform as T;
-                if (totalChildren[i].GetComponent<T>() != null)
-                    return totalChildren[i].GetComponent<T>();
+                {
+                    return allChildren[i].transform as T;
+                }
+                if (allChildren[i].GetComponent<T>() != null)
+                {
+                    return allChildren[i].GetComponent<T>();
+                }
             }
-
+        }
         return null;
     }
 
-    public static List<GameObject> GetAllChildren(this Transform container)
+    public static System.Collections.Generic.List<GameObject> GetAllChildren(this Transform container)
     {
-        List<GameObject> allChildren = new List<GameObject>();
+        System.Collections.Generic.List<GameObject> list = new System.Collections.Generic.List<GameObject>();
         for (int i = 0; i < container.childCount; i++)
         {
-            var child = container.GetChild(i);
-            allChildren.Add(child.gameObject);
-            allChildren.AddRange(GetAllChildren(child.gameObject));
+            Transform child = container.GetChild(i);
+            list.Add(child.gameObject);
+            list.AddRange(child.gameObject.GetAllChildren());
         }
-
-        return allChildren;
+        return list;
     }
 
     public static void SetupForSaving(this IdentifiableType ident, string RefID)
     {
-        savedIdents.TryAdd(RefID, ident);
+        Library.savedIdents.TryAdd(RefID, ident);
     }
 
+    /// <summary>Duplicates skipped by <see cref="AddToGroup"/> (dev console).</summary>
+    internal static int GroupDuplicatesSkipped;
+
+    /// <summary>
+    /// Adds the type to the group (asset and runtime group). Fork: skips types that are already members (0.3.1 added
+    /// duplicates, e.g. MakeVaccable after CreatePlortType) and a missing group is logged instead of a NullReferenceException.
+    /// </summary>
     public static void AddToGroup(this IdentifiableType type, string groupName)
     {
-        var group = Get<IdentifiableTypeGroup>(groupName);
-        group._memberTypes.Add(type);
-        group.GetRuntimeObject()._memberTypes.Add(type);
+        IdentifiableTypeGroup identifiableTypeGroup = Library.Get<IdentifiableTypeGroup>(groupName);
+        if (identifiableTypeGroup == null || type == null)
+        {
+            MelonLoader.MelonLogger.Warning($"[Cotton] AddToGroup: group '{groupName}' not found ({(type != null ? type.name : "null")})");
+            return;
+        }
+        if (!identifiableTypeGroup._memberTypes.Contains(type)) identifiableTypeGroup._memberTypes.Add(type);
+        else GroupDuplicatesSkipped++;
+        var runtime = identifiableTypeGroup.GetRuntimeObject();
+        if (runtime != null && !runtime._memberTypes.Contains(type)) runtime._memberTypes.Add(type);
     }
 
-    internal static void RefreshIfNotFound(this IdentifiableTypePersistenceIdLookupTable table,
-        IdentifiableType ident)
+    internal static void RefreshIfNotFound(this SaveReferenceTranslation table, IdentifiableType ident)
     {
         try
         {
@@ -139,153 +157,160 @@ public static class ExtentionLibrary
         }
         catch
         {
-            foreach (var refresh in savedIdents)
-                INTERNAL_SetupSaveForIdent(refresh.Key, refresh.Value);
+            foreach (System.Collections.Generic.KeyValuePair<string, IdentifiableType> savedIdent in Library.savedIdents)
+            {
+                Library.INTERNAL_SetupSaveForIdent(savedIdent.Key, savedIdent.Value);
+            }
         }
     }
 
-    public static Il2CppArrayBase<IdentifiableType> GetAllMembersArray(this IdentifiableTypeGroup group) => group.GetAllMembers().ToArray();
-
+    public static Il2CppArrayBase<IdentifiableType> GetAllMembersArray(this IdentifiableTypeGroup group)
+    {
+        return group.GetAllMembers().ToArray();
+    }
 
     public static Sprite ConvertToSprite(this Texture2D texture)
     {
-        return Sprite.Create(texture, new Rect(0f, 0f, (float)texture.width, (float)texture.height),
-            new Vector2(0.5f, 0.5f), 1f);
+        return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 1f);
     }
 
-    public static GameObject CopyObject(this GameObject obj) => Object.Instantiate(obj, rootOBJ.transform);
-
+    public static GameObject CopyObject(this GameObject obj)
+    {
+        return UnityEngine.Object.Instantiate(obj, Library.rootOBJ.transform);
+    }
 
     /// <summary>
     /// Use this for copying components, please make sure you are copying the same types!
     /// </summary>
-    public static void CopyFields(this Object target, Object source)
+    public static void CopyFields(this UnityEngine.Object target, UnityEngine.Object source)
     {
-        foreach (var field in source.GetIl2CppType().GetFields((Il2CppSystem.Reflection.BindingFlags)60))
+        foreach (FieldInfo field in source.GetIl2CppType().GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
         {
-            if (field.IsLiteral && !field.IsInitOnly)
-                continue;
-            try
+            if (!field.IsLiteral || field.IsInitOnly)
             {
-                target.GetIl2CppType().GetField(field.Name, (Il2CppSystem.Reflection.BindingFlags)60).SetValue(target, field.GetValue(source));
+                try
+                {
+                    target.GetIl2CppType().GetField(field.Name, BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).SetValue(target, field.GetValue(source));
+                }
+                catch
+                {
+                }
             }
-            // Errors when encountering `const` or `readonly`!
-            catch { }
         }
     }
-    
-    public static Il2CppReferenceArray<T> Add<T>(this Il2CppReferenceArray<T> array, T obj)
-        where T : Il2CppObjectBase
+
+    public static Il2CppReferenceArray<T> Add<T>(this Il2CppReferenceArray<T> array, T obj) where T : Il2CppObjectBase
     {
-        var list = new Il2CppSystem.Collections.Generic.List<T>();
-        foreach (var item in array)
+        Il2CppSystem.Collections.Generic.List<T> list = new Il2CppSystem.Collections.Generic.List<T>();
+        foreach (T item in array)
         {
             list.Add(item);
         }
-
         list.Add(obj);
-
         array = list.ToArray().Cast<Il2CppReferenceArray<T>>();
         return array;
     }
 
-    public static Il2CppReferenceArray<T> AddRange<T>(this Il2CppReferenceArray<T> array,
-        Il2CppReferenceArray<T> obj) where T : Il2CppObjectBase
+    public static Il2CppReferenceArray<T> AddRange<T>(this Il2CppReferenceArray<T> array, Il2CppReferenceArray<T> obj) where T : Il2CppObjectBase
     {
-        var list = new Il2CppSystem.Collections.Generic.List<T>();
-        foreach (var item in array)
+        Il2CppSystem.Collections.Generic.List<T> list = new Il2CppSystem.Collections.Generic.List<T>();
+        foreach (T item in array)
         {
             list.Add(item);
         }
-
-        foreach (var item in obj)
+        foreach (T item2 in obj)
         {
-            list.Add(item);
+            list.Add(item2);
         }
-
         array = list.ToArray().Cast<Il2CppReferenceArray<T>>();
         return array;
     }
 
-    public static Il2CppReferenceArray<T> AddRangeNoMultiple<T>(this Il2CppReferenceArray<T> array,
-        Il2CppReferenceArray<T> obj) where T : Il2CppObjectBase
+    public static Il2CppReferenceArray<T> AddRangeNoMultiple<T>(this Il2CppReferenceArray<T> array, Il2CppReferenceArray<T> obj) where T : Il2CppObjectBase
     {
-        var list = new Il2CppSystem.Collections.Generic.List<T>();
-        foreach (var item in array)
+        Il2CppSystem.Collections.Generic.List<T> list = new Il2CppSystem.Collections.Generic.List<T>();
+        foreach (T item in array)
         {
             if (!list.Contains(item))
-                list.Add(item);
-        }
-
-        foreach (var item in obj)
-        {
-            if (!list.Contains(item))
-                list.Add(item);
-        }
-
-        array = list.ToArray().Cast<Il2CppReferenceArray<T>>();
-        return array;
-    }
-
-    public static void AddListRange<T>(this Il2CppSystem.Collections.Generic.List<T> list,
-        Il2CppSystem.Collections.Generic.List<T> obj) where T : Il2CppObjectBase
-    {
-        foreach (var iobj in obj)
-        {
-            list.Add(iobj);
-        }
-    }
-
-    public static void AddListRangeNoMultiple<T>(this Il2CppSystem.Collections.Generic.List<T> list,
-        Il2CppSystem.Collections.Generic.List<T> obj) where T : Il2CppObjectBase
-    {
-        foreach (var iobj in obj)
-        {
-            if (!list.Contains(iobj))
             {
-                list.Add(iobj);
+                list.Add(item);
+            }
+        }
+        foreach (T item2 in obj)
+        {
+            if (!list.Contains(item2))
+            {
+                list.Add(item2);
+            }
+        }
+        array = list.ToArray().Cast<Il2CppReferenceArray<T>>();
+        return array;
+    }
+
+    public static void AddListRange<T>(this Il2CppSystem.Collections.Generic.List<T> list, Il2CppSystem.Collections.Generic.List<T> obj) where T : Il2CppObjectBase
+    {
+        Il2CppSystem.Collections.Generic.List<T>.Enumerator enumerator = obj.GetEnumerator();
+        while (enumerator.MoveNext())
+        {
+            T current = enumerator.Current;
+            list.Add(current);
+        }
+    }
+
+    public static void AddListRangeNoMultiple<T>(this Il2CppSystem.Collections.Generic.List<T> list, Il2CppSystem.Collections.Generic.List<T> obj) where T : Il2CppObjectBase
+    {
+        Il2CppSystem.Collections.Generic.List<T>.Enumerator enumerator = obj.GetEnumerator();
+        while (enumerator.MoveNext())
+        {
+            T current = enumerator.Current;
+            if (!list.Contains(current))
+            {
+                list.Add(current);
             }
         }
     }
 
     public static Il2CppStringArray AddString(this Il2CppStringArray array, string str)
     {
-        string[] strArray = new string[array.Count + 1];
-
-        int i = 0;
-        foreach (var item in array)
+        string[] array2 = new string[array.Count + 1];
+        int num = 0;
+        foreach (string item in array)
         {
-            strArray[i] = item;
-            i++;
+            array2[num] = item;
+            num++;
         }
-
-        strArray[i] = str;
-
-        return new Il2CppStringArray(strArray);
+        array2[num] = str;
+        return new Il2CppStringArray(array2);
     }
 
     public static void MakePrefab(this GameObject obj)
     {
         UnityEngine.Object.DontDestroyOnLoad(obj);
-        obj.transform.parent = rootOBJ.transform;
+        obj.transform.parent = Library.rootOBJ.transform;
     }
 
-    public static void MakeNotSellable(this IdentifiableType ident) => MakeNOTSellable(ident);
-    public static bool IsSellable(this IdentifiableType ident) => IsSellable(ident);
+    public static void MakeNotSellable(this IdentifiableType ident)
+    {
+        Library.MakeNOTSellable(ident);
+    }
 
-    public static bool MakeSellable(this IdentifiableType ident,
-        float marketValue,
-        float marketSaturation,
-        bool hideInMarket = false)
-        => MakeSellable(ident, marketValue, marketSaturation, hideInMarket);
+    public static bool IsSellable(this IdentifiableType ident)
+    {
+        return ident.IsSellable();
+    }
+
+    public static bool MakeSellable(this IdentifiableType ident, float marketValue, float marketSaturation, bool hideInMarket = false)
+    {
+        return ident.MakeSellable(marketValue, marketSaturation, hideInMarket);
+    }
 
     public static bool RemoveComponent<T>(this Transform obj) where T : Component
     {
         try
         {
-            T comp = obj.GetComponent<T>();
-            var check = comp.gameObject;
-            Object.Destroy(comp);
+            T component = obj.GetComponent<T>();
+            _ = component.gameObject;
+            UnityEngine.Object.Destroy(component);
             return true;
         }
         catch
@@ -293,13 +318,14 @@ public static class ExtentionLibrary
             return false;
         }
     }
+
     public static bool RemoveComponent<T>(this GameObject obj) where T : Component
     {
         try
         {
-            T comp = obj.GetComponent<T>();
-            var check = comp.gameObject;
-            Object.Destroy(comp);
+            T component = obj.GetComponent<T>();
+            _ = component.gameObject;
+            UnityEngine.Object.Destroy(component);
             return true;
         }
         catch
@@ -307,13 +333,14 @@ public static class ExtentionLibrary
             return false;
         }
     }
+
     public static bool RemoveComponent<T>(this Component obj) where T : Component
     {
         try
         {
-            T comp = obj.GetComponent<T>();
-            var check = comp.gameObject;
-            Object.Destroy(comp);
+            T component = obj.GetComponent<T>();
+            _ = component.gameObject;
+            UnityEngine.Object.Destroy(component);
             return true;
         }
         catch
@@ -326,9 +353,15 @@ public static class ExtentionLibrary
     {
         return obj.gameObject.AddComponent<T>();
     }
-    
-    public static bool IsInsideRange(this int number, int rangeMin, int rangeMax) =>
-        number >= rangeMin && number <= rangeMax;
+
+    public static bool IsInsideRange(this int number, int rangeMin, int rangeMax)
+    {
+        if (number >= rangeMin)
+        {
+            return number <= rangeMax;
+        }
+        return false;
+    }
 
     internal static bool TryAddComponentTypeIfNull(this GameObject obj, Il2CppSystem.Type type, out Component comp)
     {
@@ -337,17 +370,19 @@ public static class ExtentionLibrary
             comp = obj.AddComponent(type);
             return true;
         }
-        
         comp = null;
         return false;
     }
 
     public static bool ContainsAny(this string str, params string[] check)
     {
-        foreach (var c in check)
-            if (str.Contains(c))
+        foreach (string value in check)
+        {
+            if (str.Contains(value))
+            {
                 return true;
-        
+            }
+        }
         return false;
     }
 }

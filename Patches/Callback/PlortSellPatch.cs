@@ -1,12 +1,13 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Il2Cpp;
+using Il2CppMonomiPark.SlimeRancher.Economy;
 
 namespace CottonLibrary.Patches.Callback;
 
-[HarmonyPatch(typeof(EconomyDirector), nameof(EconomyDirector.RegisterSold))]
-static class PlortSellPatch
+[HarmonyPatch(typeof(PlortEconomyDirector), "RegisterSold")]
+internal static class PlortSellPatch
 {
-    public static void Postfix(EconomyDirector __instance, IdentifiableType id, int count)
+    public static void Postfix(IdentifiableType id, int count)
     {
         Callbacks.Invoke_onPlortSold(count, id);
     }

@@ -1,47 +1,74 @@
-﻿using CottonLibrary;
-using Il2CppMonomiPark.SlimeRancher;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static CottonLibrary.Library;
-
 using HarmonyLib;
-using Il2Cpp;
+using Il2CppMonomiPark.SlimeRancher.Persist;
+using Il2CppMonomiPark.SlimeRancher;
+using MelonLoader;
+using System;
+
 namespace CottonLibrary.Patches;
 
-[HarmonyPatch(typeof(SavedGame), nameof(SavedGame.Load))]
+[HarmonyPatch(typeof(GameModelPushHelpers), "PushGame")]
 public static class SaveLoadedPatch
 {
-    public static void Postfix(SavedGame __instance)
+    public static void Prefix()
     {
-        foreach (CottonMod lib in mods)
+        try
         {
-            lib.OnSavedGameLoaded();
+            Library.INTERNAL_RefreshAllSavedIdents();
         }
-
-        foreach (var ident in savedIdents)
+        catch (Exception value)
         {
-            if (!GameContext.Instance.AutoSaveDirector.identifiableTypes._runtimeObject._memberTypes.Contains(ident.Value))
-                GameContext.Instance.AutoSaveDirector.identifiableTypes._runtimeObject._memberTypes.Add(ident.Value);
+            MelonLogger.Error($"[Cotton] Failed to refresh modded idents before loading: {value}");
+        }
+    }
+
+    public static void Postfix(GameV11 gameState)
+    {
+        Library.lastGameState = gameState;
+        foreach (CottonMod mod in Library.mods)
+        {
+            try
+            {
+                mod.OnSavedGameLoaded();
+            }
+            catch (Exception value)
+            {
+                MelonLogger.Error($"[Cotton] {mod.Info.Name}.OnSavedGameLoaded failed: {value}");
+            }
         }
     }
 }
-[HarmonyPatch(typeof(SavedGame), nameof(SavedGame.Save))]
+
+[HarmonyPatch(typeof(GameModelPullHelpers), "PullGame")]
 public static class GameSavedPatch
 {
-    public static void Prefix(SavedGame __instance)
+    public static void Prefix()
     {
-        foreach (CottonMod lib in mods)
+        foreach (CottonMod mod in Library.mods)
         {
-            lib.PreGameSaving();
+            try
+            {
+                mod.PreGameSaving();
+            }
+            catch (Exception value)
+            {
+                MelonLogger.Error($"[Cotton] {mod.Info.Name}.PreGameSaving failed: {value}");
+            }
         }
-
-        foreach (var ident in savedIdents)
+        try
         {
-            INTERNAL_SetupSaveForIdent(ident.Key, ident.Value);
+            Library.INTERNAL_RefreshAllSavedIdents();
+        }
+        catch (Exception value2)
+        {
+            MelonLogger.Error($"[Cotton] Failed to refresh modded idents before saving: {value2}");
+        }
+    }
+
+    public static void Postfix(GameV11 __result)
+    {
+        if (__result != null)
+        {
+            Library.lastGameState = __result;
         }
     }
 }
-

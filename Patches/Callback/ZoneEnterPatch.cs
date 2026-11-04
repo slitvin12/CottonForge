@@ -1,17 +1,11 @@
-﻿using CottonLibrary;
-using Il2CppMonomiPark.SlimeRancher.World;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 using HarmonyLib;
 using Il2Cpp;
+using Il2CppMonomiPark.SlimeRancher.World;
+
 namespace CottonLibrary.Patches.Callback;
 
-[HarmonyPatch(typeof(PlayerZoneTracker), nameof(PlayerZoneTracker.OnEntered))]
-static class ZoneEnterPatch
+[HarmonyPatch(typeof(PlayerZoneTracker), "OnEntered")]
+internal static class ZoneEnterPatch
 {
     public static void Postfix(ZoneDefinition zone)
     {

@@ -1,14 +1,11 @@
-﻿
-using CottonLibrary;
-using Il2CppMonomiPark.SlimeRancher.World;
-
-
 using HarmonyLib;
 using Il2Cpp;
+using Il2CppMonomiPark.SlimeRancher.World;
+
 namespace CottonLibrary.Patches.Callback;
 
-[HarmonyPatch(typeof(PlayerZoneTracker), nameof(PlayerZoneTracker.OnExited))]
-static class ZoneExitPatch
+[HarmonyPatch(typeof(PlayerZoneTracker), "OnExited")]
+internal static class ZoneExitPatch
 {
     public static void Postfix(ZoneDefinition zone)
     {

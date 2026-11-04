@@ -1,36 +1,13 @@
-﻿using System.Linq;
-using CottonLibrary;
-
 using HarmonyLib;
-using Il2Cpp;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using Il2CppMonomiPark.SlimeRancher.World;
-using UnityEngine;
+using Il2CppMonomiPark.SlimeRancher.Economy;
 
 namespace CottonLibrary.Patches;
 
-
-[HarmonyPatch(typeof(EconomyDirector), "InitModel")]
+[HarmonyPatch(typeof(PlortEconomyDirector), "InitModel")]
 public static class EconomyPatch
 {
-    public static void Prefix(EconomyDirector __instance)
+    public static void Prefix(PlortEconomyDirector __instance)
     {
-        List<PlortDefaultValues.Entry> entries = new List<PlortDefaultValues.Entry>();
-        foreach (var defaultEntry in __instance._plortDefaultValues.Entries)
-        {
-            entries.Add(defaultEntry);
-        }
-        foreach (var entry in Library.marketData)
-        {
-            var defualtValues = new PlortDefaultValues.Entry()
-            {
-                FullSaturation = entry.Value.saturation,
-                Type = entry.Key,
-                Value = entry.Value.value
-            };
-            
-            entries.Add(defualtValues);
-        }
-        __instance._plortDefaultValues.Entries = new Il2CppReferenceArray<PlortDefaultValues.Entry>(entries.ToArray());
+        Library.INTERNAL_RefreshMarketData(__instance._settings);
     }
 }

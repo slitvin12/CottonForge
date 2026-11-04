@@ -10,3 +10,7 @@
 /PureLargosSR2/bin
 /PureLargosSR2/obj
 *.dll
+bin/
+obj/
+*.user
+.vs/

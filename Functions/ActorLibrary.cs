@@ -1,9 +1,30 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using HarmonyLib;
 using Il2Cpp;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppMonomiPark.SlimeRancher;
+using Il2CppMonomiPark.SlimeRancher.Damage;
+using Il2CppMonomiPark.SlimeRancher.DataModel;
+using Il2CppMonomiPark.SlimeRancher.Economy;
+using Il2CppMonomiPark.SlimeRancher.Pedia;
+using Il2CppMonomiPark.SlimeRancher.Persist;
+using Il2CppMonomiPark.SlimeRancher.Script.Util;
+using Il2CppMonomiPark.SlimeRancher.Slime;
+using Il2CppMonomiPark.SlimeRancher.UI;
+using Il2CppMonomiPark.SlimeRancher.Weather;
+using Il2CppMonomiPark.SlimeRancher.World;
+using Il2CppSystem.Collections.Generic;
+using Il2CppSystem.Linq;
+using MelonLoader;
+using Microsoft.VisualBasic.FileIO;
 using UnityEngine;
 using UnityEngine.Localization;
-using Object = UnityEngine.Object;
+using UnityEngine.Localization.Tables;
 
 namespace CottonLibrary;
 
@@ -11,92 +32,179 @@ public static partial class Library
 {
     public interface IColliderData
     {
-        public int Type => -1;
-        
-        public float GetRadius();
-        
-        public Mesh GetMesh();
-        
-        public float GetWidth();
-        
-        public float GetHeight();
-        public float GetDepth();
+        int Type => -1;
+
+        float GetRadius();
+
+        Mesh GetMesh();
+
+        float GetWidth();
+
+        float GetHeight();
+
+        float GetDepth();
     }
 
     public class DefaultColliderData : IColliderData
     {
         public int Type => 1;
-        
-        public float GetRadius() => 1.5f;
-        
-        public Mesh GetMesh() => throw new NotImplementedException();
 
-        public float GetWidth() => 1.5f;
-        
-        public float GetHeight() => 1.5f;
-        public float GetDepth() => 1.5f;
+        public float GetRadius()
+        {
+            return 1.5f;
+        }
+
+        public Mesh GetMesh()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float GetWidth()
+        {
+            return 1.5f;
+        }
+
+        public float GetHeight()
+        {
+            return 1.5f;
+        }
+
+        public float GetDepth()
+        {
+            return 1.5f;
+        }
     }
+
     public class SphereColliderData : IColliderData
     {
-        public int Type => 1;
-        
         public float radius;
-        
-        public float GetRadius() => radius;
-        
-        public Mesh GetMesh() => throw new NotImplementedException();
 
-        public float GetWidth() => radius;
-        
-        public float GetHeight() => radius;
-        public float GetDepth() => radius;
+        public int Type => 1;
+
+        public float GetRadius()
+        {
+            return radius;
+        }
+
+        public Mesh GetMesh()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float GetWidth()
+        {
+            return radius;
+        }
+
+        public float GetHeight()
+        {
+            return radius;
+        }
+
+        public float GetDepth()
+        {
+            return radius;
+        }
     }
+
     public class CapsuleColliderData : IColliderData
     {
-        public int Type => 2;
-        
         public float radius;
-        public float length;
-        
-        public float GetRadius() => radius;
-        
-        public Mesh GetMesh() => throw new NotImplementedException();
 
-        public float GetWidth() => length;
-        
-        public float GetHeight() => radius;
-        public float GetDepth() => radius;
+        public float length;
+
+        public int Type => 2;
+
+        public float GetRadius()
+        {
+            return radius;
+        }
+
+        public Mesh GetMesh()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float GetWidth()
+        {
+            return length;
+        }
+
+        public float GetHeight()
+        {
+            return radius;
+        }
+
+        public float GetDepth()
+        {
+            return radius;
+        }
     }
+
     public class MeshColliderData : IColliderData
     {
-        public int Type => 3;
-        
         public Mesh mesh;
-        
-        public float GetRadius() => throw new NotImplementedException();
-        
-        public Mesh GetMesh() => mesh;
 
-        public float GetWidth() => throw new NotImplementedException();
-        
-        public float GetHeight() => throw new NotImplementedException();
-        public float GetDepth() => throw new NotImplementedException();
+        public int Type => 3;
+
+        public float GetRadius()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Mesh GetMesh()
+        {
+            return mesh;
+        }
+
+        public float GetWidth()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float GetHeight()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float GetDepth()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class CubeColliderData : IColliderData
     {
         public Vector3 size;
-        
-        public int Type => 0;   
-        
-        public Mesh GetMesh() => throw new NotImplementedException();
 
-        public float GetRadius() => size.magnitude;
-        public float GetWidth() => size.x;
-        public float GetHeight() => size.y;
-        public float GetDepth() => size.z;
+        public int Type => 0;
+
+        public Mesh GetMesh()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float GetRadius()
+        {
+            return size.magnitude;
+        }
+
+        public float GetWidth()
+        {
+            return size.x;
+        }
+
+        public float GetHeight()
+        {
+            return size.y;
+        }
+
+        public float GetDepth()
+        {
+            return size.z;
+        }
     }
-    
+
     /// <summary>
     /// Creates a game object for a veggie/fruit object. This uses the veggie shader ('SR/AMP/Actor/Resource/Veggie').
     /// </summary>
@@ -106,123 +214,82 @@ public static partial class Library
     /// <param name="masks">Masks texture, R/G/B - Occlusion/Smoothness/Emission</param>
     /// <param name="scale">The size of the food game object. The default for a carrot is 0.12f</param>
     /// <returns>The game object of the food.</returns>
-    public static GameObject CreateFoodObject(IdentifiableType ident, Mesh mesh, Texture2D texture, Texture2D masks, ref GameObject baitObject, float scale = 0.12f) => CreateFoodObject(ident, mesh, texture, masks, scale, new DefaultColliderData(), out baitObject);
+    public static GameObject CreateFoodObject(IdentifiableType ident, Mesh mesh, Texture2D texture, Texture2D masks, ref GameObject baitObject, float scale = 0.12f)
+    {
+        return CreateFoodObject(ident, mesh, texture, masks, scale, new DefaultColliderData(), out baitObject);
+    }
+
     public static GameObject CreateFoodObject(IdentifiableType ident, Mesh mesh, Texture2D texture, Texture2D masks, float scale, IColliderData colliderData, out GameObject baitObject)
     {
-        var obj = GetVeggie("CarrotVeggie").prefab.CopyObject();
+        GameObject gameObject = GetVeggie("CarrotVeggie").prefab.CopyObject();
         baitObject = GetVeggie("CarrotVeggie").gordoSnareBaitPrefab.CopyObject();
-
-        obj.name = $"customFood{ident.name}";
-        baitObject.name = $"customFood{ident.name}_GordoSnareBait";
-        
-        obj.RemoveComponent<CapsuleCollider>();
-
+        gameObject.name = "customFood" + ident.name;
+        baitObject.name = "customFood" + ident.name + "_GordoSnareBait";
+        gameObject.RemoveComponent<CapsuleCollider>();
         if (colliderData.Type == 3)
         {
-            obj.RemoveComponent<SphereCollider>();
-            obj.AddComponent<BoxCollider>().size = new Vector3(colliderData.GetWidth(), colliderData.GetHeight(), colliderData.GetDepth());
+            gameObject.RemoveComponent<SphereCollider>();
+            gameObject.AddComponent<BoxCollider>().size = new Vector3(colliderData.GetWidth(), colliderData.GetHeight(), colliderData.GetDepth());
         }
         else if (colliderData.Type == 1)
-            obj.GetComponent<SphereCollider>().radius = colliderData.GetRadius();
+        {
+            gameObject.GetComponent<SphereCollider>().radius = colliderData.GetRadius();
+        }
         else if (colliderData.Type == 2)
         {
-            obj.RemoveComponent<SphereCollider>();
-            var col = obj.AddComponent<CapsuleCollider>();
-            col.radius = colliderData.GetRadius();
-            col.height = colliderData.GetHeight();
-            col.direction = 0;
+            gameObject.RemoveComponent<SphereCollider>();
+            CapsuleCollider capsuleCollider = gameObject.AddComponent<CapsuleCollider>();
+            capsuleCollider.radius = colliderData.GetRadius();
+            capsuleCollider.height = colliderData.GetHeight();
+            capsuleCollider.direction = 0;
         }
         else if (colliderData.Type == 3)
         {
-            obj.RemoveComponent<SphereCollider>();
-            obj.AddComponent<MeshCollider>().sharedMesh = colliderData.GetMesh();
+            gameObject.RemoveComponent<SphereCollider>();
+            gameObject.AddComponent<MeshCollider>().sharedMesh = colliderData.GetMesh();
         }
-        
-        //obj.RemoveComponent<ResourceCycle>();
-
-        var model = obj.transform.FindChild("model_carrot");
-        
-        model.GetComponent<MeshFilter>().mesh = mesh;
-        
-        var mat = Object.Instantiate(model.GetComponent<MeshRenderer>().material);
-        mat.SetTexture("_Albedo", texture);
-        mat.SetTexture("_Masks", masks);
-        model.GetComponent<MeshRenderer>().material = mat;
-        
-        obj.SetObjectIdent(ident);
-        
-        obj.transform.localScale = Vector3.one * scale;
-
+        Transform transform = gameObject.transform.FindChild("model_carrot");
+        transform.GetComponent<MeshFilter>().mesh = mesh;
+        Material material = UnityEngine.Object.Instantiate(transform.GetComponent<MeshRenderer>().material);
+        material.SetTexture("_Albedo", texture);
+        material.SetTexture("_Masks", masks);
+        transform.GetComponent<MeshRenderer>().material = material;
+        gameObject.SetObjectIdent(ident);
+        gameObject.transform.localScale = Vector3.one * scale;
         ident.gordoSnareBaitPrefab = baitObject;
-        
-        var baitModel = baitObject.transform.GetChild(0);
-        baitModel.GetComponent<MeshFilter>().mesh = mesh;
-        baitModel.GetComponent<MeshRenderer>().material = model.GetComponent<MeshRenderer>().material;
-        
+        Transform child = baitObject.transform.GetChild(0);
+        child.GetComponent<MeshFilter>().mesh = mesh;
+        child.GetComponent<MeshRenderer>().material = transform.GetComponent<MeshRenderer>().material;
         baitObject.transform.localScale = Vector3.one * scale;
-        
-        return obj;
+        return gameObject;
     }
-    public static GameObject CreateHenObject(IdentifiableType ident, Texture2D texture, Texture2D masks, IdentifiableType babyIdent, Texture2D babyTexture, Texture2D babyMasks, out GameObject baitObject, out GameObject babyObject)
+
+    public static GameObject CreateHenObject(IdentifiableType ident, Texture2D texture, Texture2D masks, out GameObject baitObject)
     {
-        var obj = GetMeat("Hen").prefab.CopyObject();
+        GameObject gameObject = GetMeat("Hen").prefab.CopyObject();
         baitObject = GetMeat("Hen").gordoSnareBaitPrefab.CopyObject();
-
-        obj.name = $"customFood{ident.name}";
-        baitObject.name = $"customFood{ident.name}_GordoSnareBait";
-        
-        var renderer = obj.GetComponentInChildren<SkinnedMeshRenderer>();
-        
-        
-        var mat = Object.Instantiate(renderer.material);
-        mat.SetTexture("_MainTex", texture);
-        mat.SetTexture("_MaskMap", masks);
-        renderer.material = mat;
-        foreach (var r in obj.GetComponentsInChildren<MeshRenderer>())
+        gameObject.name = "customFood" + ident.name;
+        baitObject.name = "customFood" + ident.name + "_GordoSnareBait";
+        SkinnedMeshRenderer componentInChildren = gameObject.GetComponentInChildren<SkinnedMeshRenderer>();
+        Material material = UnityEngine.Object.Instantiate(componentInChildren.material);
+        material.SetTexture("_MainTex", texture);
+        material.SetTexture("_MaskMap", masks);
+        componentInChildren.material = material;
+        foreach (MeshRenderer componentsInChild in gameObject.GetComponentsInChildren<MeshRenderer>())
         {
-            r.material = mat;
+            componentsInChild.material = material;
         }
-        
-        obj.SetObjectIdent(ident);
-
+        gameObject.SetObjectIdent(ident);
         ident.gordoSnareBaitPrefab = baitObject;
-        
-        var baitModel = baitObject.transform.GetChild(0).GetChild(0);
-        var baitRenderer = baitModel.GetComponent<SkinnedMeshRenderer>();
-        baitRenderer.material = renderer.material;
-        
-        foreach (var r in baitObject.GetComponentsInChildren<MeshRenderer>())
+        baitObject.transform.GetChild(0).GetChild(0).GetComponent<SkinnedMeshRenderer>()
+            .material = componentInChildren.material;
+        foreach (MeshRenderer componentsInChild2 in baitObject.GetComponentsInChildren<MeshRenderer>())
         {
-            r.material = mat;
+            componentsInChild2.material = material;
         }
-
-        babyObject = GetChick("Chick").prefab.CopyObject();
-
-        babyIdent.prefab = babyObject;
-        babyIdent.color = ident.color;
-        
-        babyObject.name = $"customFood{ident.name}Chick";
-        
-        var renderer2 = babyObject.GetComponentInChildren<SkinnedMeshRenderer>();
-        
-        
-        var mat2 = Object.Instantiate(renderer2.material);
-        mat2.SetTexture("_MainTex", babyTexture);
-        mat2.SetTexture("_MaskMap", babyMasks);
-        renderer2.material = mat2;
-        foreach (var r in babyObject.GetComponentsInChildren<MeshRenderer>())
-        {
-            r.material = mat2;
-        }
-        
-        babyObject.SetObjectIdent(babyIdent);
-
-        var reproduce = obj.GetComponent<Reproduce>();
-        reproduce.ChildPrefab = babyObject;
-        
-        return obj;
+        return gameObject;
     }
-    
+
     public static IdentifiableType GetIdent(this GameObject obj)
     {
         try
@@ -237,31 +304,57 @@ public static partial class Library
 
     public static IdentifiableType GetIdentifiableType(this GameObject obj)
     {
-        var comp = obj.GetComponent<IdentifiableActor>();
-
-        if (comp != null)
+        IdentifiableActor component = obj.GetComponent<IdentifiableActor>();
+        if (component != null)
         {
-            return comp.identType;
+            return component.identType;
         }
-
         return null;
     }
 
-    public static GameObject SpawnActor(this GameObject obj, Vector3 pos) =>
-        SpawnActor(obj, pos, Quaternion.identity);
+    public static GameObject SpawnActor(this GameObject obj, Vector3 pos)
+    {
+        return obj.SpawnActor(pos, Quaternion.identity);
+    }
 
-    public static GameObject SpawnActor(this GameObject obj, Vector3 pos, Vector3 rot) =>
-        SpawnActor(obj, pos, Quaternion.Euler(rot));
+    public static GameObject SpawnActor(this GameObject obj, Vector3 pos, Vector3 rot)
+    {
+        return obj.SpawnActor(pos, Quaternion.Euler(rot));
+    }
 
     public static GameObject SpawnActor(this GameObject obj, Vector3 pos, Quaternion rot)
     {
-        return InstantiationHelpers.InstantiateActor(obj,
-            SRSingleton<SceneContext>.Instance.RegionRegistry.CurrentSceneGroup,
-            pos,
-            rot,
-            false,
-            SlimeAppearance.AppearanceSaveSet.NONE,
-            SlimeAppearance.AppearanceSaveSet.NONE);
+        if (obj == null) return null;
+        var actor = obj.GetComponent<IdentifiableActor>();
+        return SpawnActorCore(obj, actor != null ? actor.identType : null, pos, rot);
+    }
+
+    /// <summary>Spawns an actor of <paramref name="type"/> (slime, plort, food ...) through the game's actor model, like the game itself.</summary>
+    public static GameObject SpawnActor(this IdentifiableType type, Vector3 pos, Quaternion rot)
+    {
+        if (type == null) return null;
+        return SpawnActorCore(type.prefab, type, pos, rot);
+    }
+
+    static GameObject SpawnActorCore(GameObject prefab, IdentifiableType ident, Vector3 pos, Quaternion rot)
+    {
+        var sc = SRSingleton<SceneContext>.Instance;
+        var group = sc.RegionRegistry.CurrentSceneGroup;
+        // Current SR2 builds: InstantiateActor gained a Nullable<AmmoMetadata> parameter whose default (null) makes the
+        // Il2CppInterop wrapper throw a NullReferenceException. Prefer the model path the game uses itself
+        // (GameModel.InstantiateActorModel + InstantiateActorFromModel); fall back to InstantiateActor with an empty Nullable.
+        if (ident != null && sc.GameModel != null)
+        {
+            ActorModel model = null;
+            try { model = sc.GameModel.InstantiateActorModel(ident, group, pos, rot); }
+            catch (Exception e) { MelonLogger.Warning($"[Cotton] InstantiateActorModel({ident.name}) failed, using InstantiateActor: {e.Message}"); }
+            // A created model owns the actor (it may spawn later when its region loads), so never instantiate a second one.
+            if (model != null) return InstantiationHelpers.InstantiateActorFromModel(model);
+        }
+        if (prefab == null) return null;
+        return InstantiationHelpers.InstantiateActor(prefab, group, pos, rot, false,
+            SlimeAppearance.AppearanceSaveSet.NONE, SlimeAppearance.AppearanceSaveSet.NONE,
+            new Il2CppSystem.Nullable<Il2CppMonomiPark.SlimeRancher.Player.AmmoSlot.AmmoMetadata>());
     }
 
     public static GameObject SpawnDynamic(this GameObject obj, Vector3 pos, Quaternion rot)
@@ -274,59 +367,59 @@ public static partial class Library
         Object.prefab = prefab;
     }
 
-    public static void SetObjectIdent(this GameObject prefab, IdentifiableType obj)
+    public static void SetObjectIdent(this GameObject prefab, IdentifiableType Object)
     {
-        if (obj is SlimeDefinition)
+        if (Object is SlimeDefinition)
         {
-            prefab.GetComponent<SlimeEat>().SlimeDefinition = obj.TryCast<SlimeDefinition>();
-            prefab.GetComponent<SlimeAppearanceApplicator>().SlimeDefinition = obj.TryCast<SlimeDefinition>();
+            prefab.GetComponent<SlimeEat>().SlimeDefinition = (SlimeDefinition)Object;
+            prefab.GetComponent<SlimeAppearanceApplicator>().SlimeDefinition = (SlimeDefinition)Object;
         }
-
-        prefab.GetComponent<IdentifiableActor>().identType = obj;
-        obj.prefab = prefab;
+        prefab.GetComponent<IdentifiableActor>().identType = Object;
     }
 
-    public static IdentifiableType CreatePlortType(string Name, Color32 VacColor, Sprite Icon, string RefID,
-        float marketValue, float marketSaturation)
+    public static IdentifiableType CreatePlortType(string Name, Color32 VacColor, Sprite Icon, string RefID, float marketValue, float marketSaturation)
     {
-        var plort = ScriptableObject.CreateInstance<IdentifiableType>();
-        Object.DontDestroyOnLoad(plort);
-        plort.hideFlags = HideFlags.HideAndDontSave;
-        plort.name = Name + "Plort";
-        plort.color = VacColor;
-        plort.icon = Icon;
-        plort.IsPlort = true;
-        if (marketValue > 0)
-            MakeSellable(plort, marketValue, marketSaturation);
-        plort.AddToGroup("VaccableNonLiquids");
-        INTERNAL_SetupLoadForIdent(RefID, plort);
-        return plort;
+        IdentifiableType identifiableType = ScriptableObject.CreateInstance<IdentifiableType>();
+        UnityEngine.Object.DontDestroyOnLoad(identifiableType);
+        identifiableType.hideFlags = HideFlags.HideAndDontSave;
+        identifiableType.name = Name + "Plort";
+        identifiableType.color = VacColor;
+        identifiableType.icon = Icon;
+        identifiableType.IsPlort = true;
+        if (marketValue > 0f)
+        {
+            MakeSellable(identifiableType, marketValue, marketSaturation);
+        }
+        identifiableType.AddToGroup("VaccableNonLiquids");
+        INTERNAL_SetupLoadForIdent(RefID, identifiableType);
+        return identifiableType;
     }
+
     public static IdentifiableType CreateBlankType(string Name, Color32 VacColor, Sprite Icon, string RefID)
     {
-        var type = Object.Instantiate(GetVeggie("CarrotVeggie"));
-        Object.DontDestroyOnLoad(type);
-        type.hideFlags = HideFlags.HideAndDontSave;
-        type.name = Name;
-        type.color = VacColor;
-        type.icon = Icon;
-        type.AddToGroup("VaccableNonLiquids");
-        INTERNAL_SetupLoadForIdent(RefID, type);
-        return type;
+        IdentifiableType identifiableType = UnityEngine.Object.Instantiate(GetVeggie("CarrotVeggie"));
+        UnityEngine.Object.DontDestroyOnLoad(identifiableType);
+        identifiableType.hideFlags = HideFlags.HideAndDontSave;
+        identifiableType.name = Name;
+        identifiableType.color = VacColor;
+        identifiableType.icon = Icon;
+        identifiableType.AddToGroup("VaccableNonLiquids");
+        INTERNAL_SetupLoadForIdent(RefID, identifiableType);
+        return identifiableType;
     }
 
     public static void MakeVaccable(this IdentifiableType ident)
     {
         if (!ident.prefab.GetComponent<Vacuumable>())
-            throw new NullReferenceException(
-                "This object cannot be made vaccable, it's missing a Vacuumable component, you need to add one.");
-
+        {
+            throw new NullReferenceException("This object cannot be made vaccable, it's missing a Vacuumable component, you need to add one.");
+        }
         ident.AddToGroup("VaccableNonLiquids");
     }
 
     public static void SetPlortColor(Color32 Top, Color32 Middle, Color32 Bottom, GameObject Prefab)
     {
-        var material = Prefab.GetComponent<MeshRenderer>().material;
+        Material material = Prefab.GetComponent<MeshRenderer>().material;
         material.SetColor("_TopColor", Top);
         material.SetColor("_MiddleColor", Middle);
         material.SetColor("_BottomColor", Bottom);
@@ -334,7 +427,7 @@ public static partial class Library
 
     public static void SetPlortTwinColor(Color32 Top, Color32 Middle, Color32 Bottom, GameObject Prefab)
     {
-        var material = Prefab.GetComponent<MeshRenderer>().material;
+        Material material = Prefab.GetComponent<MeshRenderer>().material;
         material.SetColor("_TwinTopColor", Top);
         material.SetColor("_TwinMiddleColor", Middle);
         material.SetColor("_TwinBottomColor", Bottom);
@@ -342,132 +435,126 @@ public static partial class Library
 
     public static IdentifiableType GetPlort(string name)
     {
-        foreach (IdentifiableType type in plorts.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
+        foreach (IdentifiableType item in plorts.GetAllMembersArray())
+        {
+            if (item.name.ToUpper() == name.ToUpper())
+            {
+                return item;
+            }
+        }
         return null;
     }
-    
-    public static IdentifiableType GetChick(string name)
-    {
-        foreach (IdentifiableType type in chicks.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
 
-        return null;
-    }
-    public static IdentifiableType GetNectar(string name)
-    {
-        foreach (IdentifiableType type in nectar.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
-        return null;
-    }
-    
     public static IdentifiableType GetVeggie(string name)
     {
-        foreach (IdentifiableType type in veggies.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
+        foreach (IdentifiableType item in veggies.GetAllMembersArray())
+        {
+            if (item.name.ToUpper() == name.ToUpper())
+            {
+                return item;
+            }
+        }
         return null;
     }
+
     public static IdentifiableType GetFruit(string name)
     {
-        foreach (IdentifiableType type in fruits.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
+        foreach (IdentifiableType item in fruits.GetAllMembersArray())
+        {
+            if (item.name.ToUpper() == name.ToUpper())
+            {
+                return item;
+            }
+        }
         return null;
     }
+
     public static IdentifiableType GetMeat(string name)
     {
-        foreach (IdentifiableType type in meat.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
+        foreach (IdentifiableType item in meat.GetAllMembersArray())
+        {
+            if (item.name.ToUpper() == name.ToUpper())
+            {
+                return item;
+            }
+        }
         return null;
     }
+
     public static IdentifiableType GetFood(string name)
     {
-        foreach (IdentifiableType type in food.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
+        foreach (IdentifiableType item in food.GetAllMembersArray())
+        {
+            if (item.name.ToUpper() == name.ToUpper())
+            {
+                return item;
+            }
+        }
         return null;
     }
 
     public static IdentifiableType GetCraft(string name)
     {
-        foreach (IdentifiableType type in crafts.GetAllMembersArray())
-            if (type.name.ToUpper() == name.ToUpper())
-                return type;
-
+        foreach (IdentifiableType item in crafts.GetAllMembersArray())
+        {
+            if (item.name.ToUpper() == name.ToUpper())
+            {
+                return item;
+            }
+        }
         return null;
     }
-    
-    public static IdentifiableTypeGroup MakeNewGroup(IdentifiableType[] types, string groupName,
-        IdentifiableTypeGroup[] subGroups = null)
+
+    public static IdentifiableTypeGroup MakeNewGroup(IdentifiableType[] types, string groupName, IdentifiableTypeGroup[] subGroups = null)
     {
-        var group = new IdentifiableTypeGroup();
-        var typesList = new Il2CppSystem.Collections.Generic.List<IdentifiableType>();
-        foreach (var type in types)
+        IdentifiableTypeGroup identifiableTypeGroup = new IdentifiableTypeGroup();
+        Il2CppSystem.Collections.Generic.List<IdentifiableType> list = new Il2CppSystem.Collections.Generic.List<IdentifiableType>();
+        foreach (IdentifiableType item in types)
         {
             try
             {
-                typesList.Add(type);
+                list.Add(item);
             }
             catch
             {
             }
         }
-
-        var subGroupsList = new Il2CppSystem.Collections.Generic.List<IdentifiableTypeGroup>();
-        foreach (var subGroup in subGroups)
+        Il2CppSystem.Collections.Generic.List<IdentifiableTypeGroup> list2 = new Il2CppSystem.Collections.Generic.List<IdentifiableTypeGroup>();
+        foreach (IdentifiableTypeGroup item2 in subGroups)
         {
             try
             {
-                subGroupsList.Add(subGroup);
+                list2.Add(item2);
             }
             catch
             {
             }
         }
-
-        group._memberTypes = typesList;
-        group._memberGroups = subGroupsList;
-        
-        GameContext.Instance.LookupDirector.RegisterIdentifiableTypeGroup(group);
-
-        return group;
+        identifiableTypeGroup._memberTypes = list;
+        identifiableTypeGroup._memberGroups = list2;
+        SRSingleton<GameContext>.Instance.LookupDirector.RegisterIdentifiableTypeGroup(identifiableTypeGroup);
+        return identifiableTypeGroup;
     }
 
-    public static IdentifiableTypeGroup CreateIdentifiableGroup(LocalizedString localizedName, string codeName,
-        List<IdentifiableType> types, List<IdentifiableTypeGroup> subGroups, bool isFood = false)
+    public static IdentifiableTypeGroup CreateIdentifiableGroup(LocalizedString localizedName, string codeName, System.Collections.Generic.List<IdentifiableType> types, System.Collections.Generic.List<IdentifiableTypeGroup> subGroups, bool isFood = false)
     {
-        var group = ScriptableObject.CreateInstance<IdentifiableTypeGroup>();
-
-        group._memberTypes = new Il2CppSystem.Collections.Generic.List<IdentifiableType>();
-        foreach (var type in types)
-            group._memberTypes.Add(type);
-
-        group._memberGroups = new Il2CppSystem.Collections.Generic.List<IdentifiableTypeGroup>();
-        foreach (var subGroup in subGroups)
-            group._memberGroups.Add(subGroup);
-        
-        group._isFood = isFood;
-
-        group._localizedName = localizedName;
-
-        group.name = codeName;
-        
-        group.AllowedCategories = new Il2CppSystem.Collections.Generic.List<IdentifiableCategory>();
-        
-        group._runtimeObject = new IdentifiableTypeGroupRuntimeObject(group);
-
-        customGroups.Add(group);
-        return group;
+        IdentifiableTypeGroup identifiableTypeGroup = ScriptableObject.CreateInstance<IdentifiableTypeGroup>();
+        identifiableTypeGroup._memberTypes = new Il2CppSystem.Collections.Generic.List<IdentifiableType>();
+        foreach (IdentifiableType type in types)
+        {
+            identifiableTypeGroup._memberTypes.Add(type);
+        }
+        identifiableTypeGroup._memberGroups = new Il2CppSystem.Collections.Generic.List<IdentifiableTypeGroup>();
+        foreach (IdentifiableTypeGroup subGroup in subGroups)
+        {
+            identifiableTypeGroup._memberGroups.Add(subGroup);
+        }
+        identifiableTypeGroup._isFood = isFood;
+        identifiableTypeGroup._localizedName = localizedName;
+        identifiableTypeGroup.name = codeName;
+        identifiableTypeGroup.AllowedCategories = new Il2CppSystem.Collections.Generic.List<IdentifiableCategory>();
+        identifiableTypeGroup._runtimeObject = new IdentifiableTypeGroupRuntimeObject(identifiableTypeGroup);
+        customGroups.Add(identifiableTypeGroup);
+        return identifiableTypeGroup;
     }
 }

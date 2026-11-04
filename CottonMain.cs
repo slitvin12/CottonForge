@@ -1,75 +1,90 @@
-﻿global using static CottonLibrary.ExtentionLibrary;
-using CottonLibrary;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using CottonLibrary.Patches;
 using MelonLoader;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using static CottonLibrary.Library;
 
-[assembly: MelonInfo(typeof(CottonMain), "Cotton Library", "0.3.0", "PinkTarr")]
+[assembly: MelonInfo(typeof(CottonLibrary.CottonMain), "CottonForge", CottonLibrary.Forge.ForgeCore.Version, "slitvin12 (fork of Cotton Library by PinkTarr)")]
 [assembly: MelonGame("MonomiPark", "SlimeRancher2")]
+// patched class by class in ForgeCore.Init (a broken target must not disable the other patches)
+[assembly: MelonLoader.HarmonyDontPatchAll]
 
 namespace CottonLibrary;
 
 public class CottonMain : MelonMod
 {
+    public override void OnInitializeMelon()
+    {
+        Forge.ForgeCore.Init(this);
+    }
+
+    public override void OnUpdate()
+    {
+        Forge.ForgeCore.Tick();
+    }
+
     public override void OnLateInitializeMelon()
     {
-        AddLanguages("internalTranslations");
-
-        foreach (MelonBase melonBase in MelonBase.RegisteredMelons)
+        foreach (MelonBase registeredMelon in MelonBase.RegisteredMelons)
         {
-            if (melonBase is CottonMod)
+            if (registeredMelon is CottonMod)
             {
-                CottonMod mod = melonBase as CottonMod;
-                mods.Add(mod);
+                CottonMod cottonMod = registeredMelon as CottonMod;
+                Library.mods.Add(cottonMod);
+                MelonLogger.Msg("Cotton registered mod: " + cottonMod.MelonAssembly.Assembly.FullName);
             }
         }
-        if (Get("SR2ELibraryROOT")) { rootOBJ = Get("CottonLibraryROOT"); }
-        else
+        if ((bool)Library.Get("SR2ELibraryROOT"))
         {
-            rootOBJ = new GameObject();
-            rootOBJ.SetActive(false);
-            rootOBJ.name = "CottonLibraryROOT";
-            UnityEngine.Object.DontDestroyOnLoad(rootOBJ);
+            Library.rootOBJ = Library.Get("CottonLibraryROOT");
+            return;
         }
+        Library.rootOBJ = new GameObject();
+        Library.rootOBJ.SetActive(value: false);
+        Library.rootOBJ.name = "CottonLibraryROOT";
+        UnityEngine.Object.DontDestroyOnLoad(Library.rootOBJ);
     }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)
     {
         switch (sceneName)
         {
-            case "GameCore":             
-                MelonLogger.Msg(LoadLocalizedText("lib.registered_list"));
-
-                foreach (CottonMod mod in mods)
-                {          
-                    MelonLogger.Msg(LoadLocalizedText("lib.registered", mod.MelonAssembly.Assembly.FullName));
-
-                    mod.OnGameCoreLoaded();
-                }
-                break;
-            case "ZoneCore":
-                foreach (CottonMod mod in mods)
-                    mod.OnZoneCoreLoaded();
-                break;
-            case "SystemCore":
-                foreach (CottonMod mod in mods)
-                    mod.OnSystemSceneLoaded();
-                
-                LocalizationRepair.StartLoop();
-                break;
-            case "PlayerCore":
-                foreach (CottonMod mod in mods)
-                    mod.OnPlayerSceneLoaded();
-                InitializeFX();
-                break;
+        case "GameCore":
+            foreach (CottonMod mod in Library.mods)
+            {
+                mod.OnGameCoreLoaded();
+            }
+            break;
+        case "ZoneCore":
+            foreach (CottonMod mod2 in Library.mods)
+            {
+                mod2.OnZoneCoreLoaded();
+            }
+            break;
+        case "SystemCore":
+            foreach (CottonMod mod3 in Library.mods)
+            {
+                mod3.OnSystemSceneLoaded();
+            }
+            LocalizationRepair.StartLoop();
+            break;
+        case "PlayerCore":
+            foreach (CottonMod mod4 in Library.mods)
+            {
+                mod4.OnPlayerSceneLoaded();
+            }
+            Library.InitializeFX();
+            break;
         }
-
-        var pair = onSceneLoaded.FirstOrDefault(x => sceneName.Contains(x.Key));
-
-        if (pair.Value != null)
-            foreach (var action in pair.Value)
-                action();
+        KeyValuePair<string, List<Action>> keyValuePair = Library.onSceneLoaded.FirstOrDefault((KeyValuePair<string, List<Action>> x) => sceneName.Contains(x.Key));
+        if (keyValuePair.Value == null)
+        {
+            return;
+        }
+        foreach (Action item in keyValuePair.Value)
+        {
+            item();
+        }
     }
 }

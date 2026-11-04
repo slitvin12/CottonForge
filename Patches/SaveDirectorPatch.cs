@@ -1,78 +1,107 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CottonLibrary;
-using static CottonLibrary.Library;
-
+using System;
 using HarmonyLib;
 using Il2Cpp;
+using Il2CppMonomiPark.SlimeRancher;
 using Il2CppMonomiPark.SlimeRancher.Pedia;
-using Il2CppMonomiPark.SlimeRancher.UI.Localization;
-using Il2CppTMPro;
+using MelonLoader;
 using UnityEngine;
 
 namespace CottonLibrary.Patches;
-
 
 [HarmonyPatch(typeof(AutoSaveDirector), "Awake")]
 public static class SaveDirectorPatch
 {
     public static void Prefix(AutoSaveDirector __instance)
     {
-
-        slimes = Get<IdentifiableTypeGroup>("SlimesGroup");
-        baseSlimes = Get<IdentifiableTypeGroup>("BaseSlimeGroup");
-        largos = Get<IdentifiableTypeGroup>("LargoGroup");
-        food = Get<IdentifiableTypeGroup>("FoodGroup");
-        meat = Get<IdentifiableTypeGroup>("MeatGroup");
-        veggies = Get<IdentifiableTypeGroup>("VeggieGroup");
-        fruits = Get<IdentifiableTypeGroup>("FruitGroup");
-        nectar = Get<IdentifiableTypeGroup>("NectarFoodGroup");
-        plorts = Get<IdentifiableTypeGroup>("PlortGroup");
-        crafts = Get<IdentifiableTypeGroup>("CraftGroup");
-        chicks = Get<IdentifiableTypeGroup>("ChickGroup");
-
-        foreach (CottonMod lib in mods)
+        CottonLibrary.Forge.VanillaSlimes.Snapshot();   // fork: what is vanilla (before any mod creates slimes)
+        Library.slimes = Library.Get<IdentifiableTypeGroup>("SlimesGroup");
+        Library.baseSlimes = Library.Get<IdentifiableTypeGroup>("BaseSlimeGroup");
+        Library.largos = Library.Get<IdentifiableTypeGroup>("LargoGroup");
+        Library.meat = Library.Get<IdentifiableTypeGroup>("MeatGroup");
+        Library.food = Library.Get<IdentifiableTypeGroup>("FoodGroup");
+        Library.veggies = Library.Get<IdentifiableTypeGroup>("VeggieGroup");
+        Library.fruits = Library.Get<IdentifiableTypeGroup>("FruitGroup");
+        Library.nectar = Library.Get<IdentifiableTypeGroup>("NectarFoodGroup");
+        Library.plorts = Library.Get<IdentifiableTypeGroup>("PlortGroup");
+        Library.crafts = Library.Get<IdentifiableTypeGroup>("CraftGroup");
+        foreach (CottonMod mod in Library.mods)
         {
-            lib.SaveDirectorLoading(__instance);
+            try
+            {
+                mod.SaveDirectorLoading(__instance);
+            }
+            catch (Exception value)
+            {
+                MelonLogger.Error($"[Cotton] {mod.Info.Name}.SaveDirectorLoading failed: {value}");
+            }
         }
     }
+
     public static void Postfix()
     {
-        PediaDetailInitialize();
-        
-        // 0.6: ffs why
-        var steamToy = Get<ToyDefinition>("SteamFox");
-        if (steamToy)
-            INTERNAL_SetupLoadForIdent(steamToy.ReferenceId, steamToy);
-        // add more platforms please
-
-        foreach (CottonMod lib in mods)
+        try
         {
-            lib.SaveDirectorLoaded();
+            Library.PediaDetailInitialize();
         }
-        
-        foreach (CottonMod lib in mods)
+        catch (Exception value)
         {
-            lib.LateSaveDirectorLoaded();
+            MelonLogger.Error($"[Cotton] PediaDetailInitialize failed: {value}");
         }
-        
-        // Doing this so it executes after all mods have made their slimes.
-        foreach (var largoAction in createLargoActions)
+        ToyDefinition toyDefinition = Library.Get<ToyDefinition>("SteamFox");
+        if ((bool)toyDefinition)
         {
-            largoAction();
+            Library.INTERNAL_SetupLoadForIdent(toyDefinition.ReferenceId, toyDefinition);
         }
-        
-        foreach (CottonMod lib in mods)
+        foreach (CottonMod mod in Library.mods)
         {
-            lib.AutoLargosLoaded();
+            try
+            {
+                mod.SaveDirectorLoaded();
+            }
+            catch (Exception value2)
+            {
+                MelonLogger.Error($"[Cotton] {mod.Info.Name}.SaveDirectorLoaded failed: {value2}");
+            }
         }
-        
-        foreach (var category in Resources.FindObjectsOfTypeAll<PediaCategory>())
+        foreach (CottonMod mod2 in Library.mods)
         {
-            category.GetRuntimeCategory();
+            try
+            {
+                mod2.LateSaveDirectorLoaded();
+            }
+            catch (Exception value3)
+            {
+                MelonLogger.Error($"[Cotton] {mod2.Info.Name}.LateSaveDirectorLoaded failed: {value3}");
+            }
+        }
+        foreach (Action createLargoAction in Library.createLargoActions)
+        {
+            try
+            {
+                createLargoAction();
+            }
+            catch (Exception value4)
+            {
+                MelonLogger.Error($"[Cotton] Largo creation failed: {value4}");
+            }
+        }
+        try
+        {
+            Library.INTERNAL_RefreshAllSavedIdents();
+        }
+        catch (Exception value5)
+        {
+            MelonLogger.Error($"[Cotton] Failed to register modded idents: {value5}");
+        }
+        foreach (PediaCategory item in Resources.FindObjectsOfTypeAll<PediaCategory>())
+        {
+            try
+            {
+                item.GetRuntimeCategory();
+            }
+            catch
+            {
+            }
         }
     }
 }

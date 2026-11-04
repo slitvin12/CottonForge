@@ -1,82 +1,102 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
+using HarmonyLib;
+using Il2Cpp;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppMonomiPark.SlimeRancher;
+using Il2CppMonomiPark.SlimeRancher.Damage;
+using Il2CppMonomiPark.SlimeRancher.DataModel;
+using Il2CppMonomiPark.SlimeRancher.Economy;
+using Il2CppMonomiPark.SlimeRancher.Pedia;
+using Il2CppMonomiPark.SlimeRancher.Persist;
 using Il2CppMonomiPark.SlimeRancher.Script.Util;
+using Il2CppMonomiPark.SlimeRancher.Slime;
+using Il2CppMonomiPark.SlimeRancher.UI;
+using Il2CppMonomiPark.SlimeRancher.Weather;
+using Il2CppMonomiPark.SlimeRancher.World;
+using Il2CppSystem.Collections.Generic;
+using Il2CppSystem.Linq;
 using MelonLoader;
+using Microsoft.VisualBasic.FileIO;
 using UnityEngine;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Tables;
-using Object = UnityEngine.Object;
 
 namespace CottonLibrary;
 
 public static partial class Library
 {
-    public static T? Get<T>(string name) where T : Object =>
-        Resources.FindObjectsOfTypeAll<T>().FirstOrDefault((T x) => x.name == name);
+    internal static GameV11 lastGameState;
+
+    public static T Get<T>(string name) where T : UnityEngine.Object
+    {
+        return Resources.FindObjectsOfTypeAll<T>().FirstOrDefault((T x) => x.name == name);
+    }
 
     public static GameObject CreatePrefab(string Name, GameObject baseObject)
     {
-        var obj = baseObject.CopyObject();
-        UnityEngine.Object.DontDestroyOnLoad(obj);
-        
-        obj.name = Name;
-        obj.transform.parent = rootOBJ.transform;
-
-        var components = obj.GetComponents<Behaviour>();
-        foreach (var component in components)
+        GameObject gameObject = baseObject.CopyObject();
+        UnityEngine.Object.DontDestroyOnLoad(gameObject);
+        gameObject.name = Name;
+        gameObject.transform.parent = rootOBJ.transform;
+        foreach (Behaviour component in gameObject.GetComponents<Behaviour>())
+        {
             component.enabled = true;
-        
-        return obj;
-    } 
+        }
+        return gameObject;
+    }
+
     public static Texture2D LoadPNG(string embeddedFile)
     {
-        Assembly executingAssembly = Assembly.GetCallingAssembly();
-        System.IO.Stream manifestResourceStream =
-            executingAssembly.GetManifestResourceStream(executingAssembly.GetName().Name + "." + embeddedFile +
-                                                        ".png");
+        Assembly callingAssembly = Assembly.GetCallingAssembly();
+        Stream? manifestResourceStream = callingAssembly.GetManifestResourceStream(callingAssembly.GetName().Name + "." + embeddedFile + ".png");
         byte[] array = new byte[manifestResourceStream.Length];
         manifestResourceStream.Read(array, 0, array.Length);
         Texture2D texture2D = new Texture2D(1, 1);
-        ImageConversion.LoadImage(texture2D, array);
+        Il2CppImageConversionManager.LoadImage(texture2D, array);
         texture2D.filterMode = FilterMode.Bilinear;
         return texture2D;
     }
+
     public static AssetBundle LoadBundle(string embeddedFile)
     {
-        Assembly executingAssembly = Assembly.GetCallingAssembly();
-        System.IO.Stream manifestResourceStream =
-            executingAssembly.GetManifestResourceStream(executingAssembly.GetName().Name + "." + embeddedFile);
+        Assembly callingAssembly = Assembly.GetCallingAssembly();
+        Stream? manifestResourceStream = callingAssembly.GetManifestResourceStream(callingAssembly.GetName().Name + "." + embeddedFile);
         byte[] array = new byte[manifestResourceStream.Length];
         manifestResourceStream.Read(array, 0, array.Length);
-        
         return AssetBundle.LoadFromMemory(new Il2CppStructArray<byte>(array));
     }
-    
-    // Debugging
-    
-    /// <summary>
-    /// Take all base slimes and organize them in a string. You can print this to log.
-    /// </summary>
-    /// <returns>The list of base slimes.</returns>
+
     public static string BaseSlimesListAsString()
     {
-        string value = "Base slimes:\n";
-        foreach (var slime in baseSlimes.GetAllMembersArray())
-            value += $"Localized Name: {slime.localizedName.GetLocalizedString()}  |  Actual name: {slime.name}\n";
-        return value;
+        string text = "Base slimes:\n";
+        foreach (IdentifiableType item in baseSlimes.GetAllMembersArray())
+        {
+            text += $"Localized Name: {item.localizedName.GetLocalizedString()}  |  Actual name: {item.name}\n";
+        }
+        return text;
     }
 
-    public static void ExecuteInFrames(System.Action action, int frames)
+    public static void ExecuteInFrames(Action action, int frames)
     {
         MelonCoroutines.Start(Wait(action, frames));
     }
 
-    private static System.Collections.IEnumerator Wait(System.Action action, int frames)
+    private static IEnumerator Wait(Action action, int frames)
     {
-        for (int i = 0; i < frames; i++){
+        for (int i = 0; i < frames; i++)
+        {
             yield return null;
         }
-  
         action();
-    } 
+    }
+
+    public static GameObject Get(string name)
+    {
+        return Get<GameObject>(name);
+    }
 }

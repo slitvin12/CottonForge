@@ -1,8 +1,30 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using JetBrains.Annotations;
+using Il2CppMonomiPark.SlimeRancher;
+using Il2CppMonomiPark.SlimeRancher.Damage;
+using Il2CppMonomiPark.SlimeRancher.DataModel;
+using Il2CppMonomiPark.SlimeRancher.Economy;
+using Il2CppMonomiPark.SlimeRancher.Pedia;
+using Il2CppMonomiPark.SlimeRancher.Persist;
+using Il2CppMonomiPark.SlimeRancher.Script.Util;
+using Il2CppMonomiPark.SlimeRancher.Slime;
+using Il2CppMonomiPark.SlimeRancher.UI;
+using Il2CppMonomiPark.SlimeRancher.Weather;
+using Il2CppMonomiPark.SlimeRancher.World;
+using Il2CppSystem.Collections.Generic;
+using Il2CppSystem.Linq;
+using MelonLoader;
+using Microsoft.VisualBasic.FileIO;
 using UnityEngine;
-using Object = UnityEngine.Object;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Tables;
 
 namespace CottonLibrary;
 
@@ -11,23 +33,23 @@ public static partial class Library
     [Flags]
     public enum SpawnLocations : ushort
     {
-        RainbowFields = 1 << 0,
-        StarlightStand = 1 << 1,
-        EmberValley = 1 << 2,
-        PowderfallBluffs = 1 << 3,
-        LabyrinthWaterworks = 1 << 4,
-        LabyrinthLavadepths = 1 << 5,
-        LabyrinthDreamland = 1 << 6,
-        LabyrinthHub = 1 << 7,
-        CustomArray = 1 << 8,
-        All = 255
+        RainbowFields = 1,
+        StarlightStand = 2,
+        EmberValley = 4,
+        PowderfallBluffs = 8,
+        LabyrinthWaterworks = 0x10,
+        LabyrinthLavadepths = 0x20,
+        LabyrinthDreamland = 0x40,
+        LabyrinthHub = 0x80,
+        CustomArray = 0x100,
+        All = 0xFF
     }
 
     [Flags]
     public enum SpawnerTypes : byte
     {
-        Slime = 1 << 0,
-        Animal = 1 << 1,
+        Slime = 1,
+        Animal = 2
     }
 
     public enum SpawningMode
@@ -41,31 +63,38 @@ public static partial class Library
     public enum RequiredConditions
     {
         None = 0,
-        /// <summary>
-        /// Requires an Angler Slime to meet the condition.
-        /// </summary>
-        RequiresAnglerSlime = 1 << 0,
-        /// <summary>
-        /// Requires any Angler Largo to meet the condition.
-        /// </summary>
-        RequiresAnglerLargo = 1 << 1,
-        /// <summary>
-        /// Requires only Largo Slimes to meet the condition, if there is a normal slime that can be spawned, it will NOT meet the condition.
-        /// </summary>
-        RequiresLargosOnly = 1 << 2,
-        /// <summary>
-        /// Requires only Pink Slimes or any Modded Slime to meet the condition. If there are any other slimes, including largos, the condition will NOT be met.
-        /// </summary>
-        RequiresOnlyPinkOrModdedSlimes = 1 << 3,
+        RequiresAnglerSlime = 1,
+        RequiresAnglerLargo = 2,
+        RequiresLargosOnly = 4,
+        RequiresOnlyPinkOrModdedSlimes = 8
     }
-    
-    public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow,
-        SpawnLocations zones, float weight, SpawnerTypes spawnerTargets) =>
-        MakeSpawnableInZones(ident, timeWindow, zones, weight, spawnerTargets, SpawningMode.Default, RequiredConditions.None, Array.Empty<string>());
 
-    public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow,
-        SpawnLocations zones, float weight, SpawnerTypes spawnerTargets, SpawningMode mode,RequiredConditions requiredConditions) =>
+    internal struct ReplacementSpawnerData
+    {
+        public IdentifiableType ident;
+
+        public float chance;
+
+        public string[] zones;
+    }
+
+    public static System.Collections.Generic.Dictionary<string, GameObject> gordos = new System.Collections.Generic.Dictionary<string, GameObject>();
+
+    public static System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Action>> onSceneLoaded = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Action>>();
+
+    public static System.Collections.Generic.Dictionary<string, ResourceGrowerDefinition> resourceGrowerDefinitions = new System.Collections.Generic.Dictionary<string, ResourceGrowerDefinition>();
+
+    internal static System.Collections.Generic.List<Action<SpawnResource>> onResourceGrowerAwake = new System.Collections.Generic.List<Action<SpawnResource>>();
+
+    public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow, SpawnLocations zones, float weight, SpawnerTypes spawnerTargets)
+    {
+        MakeSpawnableInZones(ident, timeWindow, zones, weight, spawnerTargets, SpawningMode.Default, RequiredConditions.None, Array.Empty<string>());
+    }
+
+    public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow, SpawnLocations zones, float weight, SpawnerTypes spawnerTargets, SpawningMode mode, RequiredConditions requiredConditions)
+    {
         MakeSpawnableInZones(ident, timeWindow, zones, weight, spawnerTargets, mode, requiredConditions, Array.Empty<string>());
+    }
 
     /// <summary>
     /// Makes an Identifiable able to spawn.
@@ -79,309 +108,331 @@ public static partial class Library
     /// <param name="requiredConditions">Required conditions on when not to inject into a spawner.</param>
     /// <param name="customZoneSceneNames">An array of custom scene names.</param>
     /// <exception cref="InvalidOperationException">Occurs when an invalid SpawningMode is used. Should never happen.</exception>
-    public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow,
-        SpawnLocations zones, float weight, SpawnerTypes spawnerTargets, SpawningMode mode, 
-        RequiredConditions requiredConditions, params string[] customZoneSceneNames)
+    public static void MakeSpawnableInZones(IdentifiableType ident, DirectedActorSpawner.TimeWindow timeWindow, SpawnLocations zones, float weight, SpawnerTypes spawnerTargets, SpawningMode mode, RequiredConditions requiredConditions, params string[] customZoneSceneNames)
     {
-        
-        var list = GetSceneNamesFromSpawnerZones(zones);
-
-        foreach (var custom in customZoneSceneNames)
-            list.Add(custom);
-        
+        System.Collections.Generic.List<string> list = GetSceneNamesFromSpawnerZones(zones);
+        foreach (string item in customZoneSceneNames)
+        {
+            list.Add(item);
+        }
         switch (mode)
         {
-            case SpawningMode.Default:
-
-                executeOnSpawnerAwake.Add(new(spawner =>
+        case SpawningMode.Default:
+            executeOnSpawnerAwake.Add(delegate(DirectedActorSpawner spawner)
+            {
+                if (ContainsZoneName(spawner.gameObject.scene.name, list))
                 {
-                    
-                    if (ContainsZoneName(spawner.gameObject.scene.name, list))
+                    if (spawnerTargets.HasFlag(SpawnerTypes.Slime) && spawner.TryCast<DirectedSlimeSpawner>() != null)
                     {
-                        if (spawnerTargets.HasFlag(SpawnerTypes.Slime))
-                            if (spawner.TryCast<DirectedSlimeSpawner>() != null)
-                                AddSpawningSettings(spawner, ident, weight, timeWindow, requiredConditions);
-
-                        if (spawnerTargets.HasFlag(SpawnerTypes.Animal))
-                            if (spawner.TryCast<DirectedAnimalSpawner>() != null)
-                                AddSpawningSettings(spawner, ident, weight, timeWindow, requiredConditions);
+                        AddSpawningSettings(spawner, ident, weight, timeWindow, requiredConditions);
                     }
-                }));
-                break;
-            case SpawningMode.ReplacementBasedSpawning:
-                spawnerReplacements.Add(new ReplacementSpawnerData()
-                {
-                    chance = weight,
-                    ident = ident,
-                    zones = list.ToArray(),
-                });
-                break;
-            default:
-                throw new InvalidOperationException("Unknown spawning mode used!");
+                    if (spawnerTargets.HasFlag(SpawnerTypes.Animal) && spawner.TryCast<DirectedAnimalSpawner>() != null)
+                    {
+                        AddSpawningSettings(spawner, ident, weight, timeWindow, requiredConditions);
+                    }
+                }
+            });
+            break;
+        case SpawningMode.ReplacementBasedSpawning:
+            spawnerReplacements.Add(new ReplacementSpawnerData
+            {
+                chance = weight,
+                ident = ident,
+                zones = list.ToArray()
+            });
+            break;
+        default:
+            throw new InvalidOperationException("Unknown spawning mode used!");
         }
-
     }
 
-    public static List<string> GetSceneNamesFromSpawnerZones(SpawnLocations zones)
+    public static System.Collections.Generic.List<string> GetSceneNamesFromSpawnerZones(SpawnLocations zones)
     {
-        List<string> names = new();
-
-        if (zones.HasFlag(SpawnLocations.RainbowFields)) names.Add("zoneFields");
-        if (zones.HasFlag(SpawnLocations.EmberValley)) names.Add("zoneGorge");
-        if (zones.HasFlag(SpawnLocations.StarlightStand)) names.Add("zoneStrand");
-        if (zones.HasFlag(SpawnLocations.PowderfallBluffs)) names.Add("zoneBluffs");
-        if (zones.HasFlag(SpawnLocations.LabyrinthWaterworks)) names.Add("LabStrand");
-        if (zones.HasFlag(SpawnLocations.LabyrinthLavadepths)) names.Add("LabValley");
-        if (zones.HasFlag(SpawnLocations.LabyrinthDreamland)) names.Add("Dreamland");
-        if (zones.HasFlag(SpawnLocations.LabyrinthHub)) names.Add("Hub");
-
-        return names;
+        System.Collections.Generic.List<string> list = new System.Collections.Generic.List<string>();
+        if (zones.HasFlag(SpawnLocations.RainbowFields))
+        {
+            list.Add("zoneFields");
+        }
+        if (zones.HasFlag(SpawnLocations.EmberValley))
+        {
+            list.Add("zoneGorge");
+        }
+        if (zones.HasFlag(SpawnLocations.StarlightStand))
+        {
+            list.Add("zoneStrand");
+        }
+        if (zones.HasFlag(SpawnLocations.PowderfallBluffs))
+        {
+            list.Add("zoneBluffs");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthWaterworks))
+        {
+            list.Add("LabStrand");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthLavadepths))
+        {
+            list.Add("LabValley");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthDreamland))
+        {
+            list.Add("Dreamland");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthHub))
+        {
+            list.Add("Hub");
+        }
+        return list;
     }
 
-    public static List<string> GetDefNamesFromSpawnerZones(SpawnLocations zones)
+    public static System.Collections.Generic.List<string> GetDefNamesFromSpawnerZones(SpawnLocations zones)
     {
-        List<string> names = new();
-
-        if (zones.HasFlag(SpawnLocations.RainbowFields)) names.Add("fields");
-        if (zones.HasFlag(SpawnLocations.EmberValley)) names.Add("gorge");
-        if (zones.HasFlag(SpawnLocations.StarlightStand)) names.Add("strand");
-        if (zones.HasFlag(SpawnLocations.PowderfallBluffs)) names.Add("bluffs");
-        if (zones.HasFlag(SpawnLocations.LabyrinthWaterworks)) names.Add("waterworks");
-        if (zones.HasFlag(SpawnLocations.LabyrinthLavadepths)) names.Add("lavadepths");
-        if (zones.HasFlag(SpawnLocations.LabyrinthDreamland)) names.Add("dream");
-        if (zones.HasFlag(SpawnLocations.LabyrinthHub)) names.Add("hub");
-
-        return names;
+        System.Collections.Generic.List<string> list = new System.Collections.Generic.List<string>();
+        if (zones.HasFlag(SpawnLocations.RainbowFields))
+        {
+            list.Add("fields");
+        }
+        if (zones.HasFlag(SpawnLocations.EmberValley))
+        {
+            list.Add("gorge");
+        }
+        if (zones.HasFlag(SpawnLocations.StarlightStand))
+        {
+            list.Add("strand");
+        }
+        if (zones.HasFlag(SpawnLocations.PowderfallBluffs))
+        {
+            list.Add("bluffs");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthWaterworks))
+        {
+            list.Add("waterworks");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthLavadepths))
+        {
+            list.Add("lavadepths");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthDreamland))
+        {
+            list.Add("dream");
+        }
+        if (zones.HasFlag(SpawnLocations.LabyrinthHub))
+        {
+            list.Add("hub");
+        }
+        return list;
     }
 
-    internal static bool ContainsZoneName(string sceneName, List<string> zoneNames)
+    internal static bool ContainsZoneName(string sceneName, System.Collections.Generic.List<string> zoneNames)
     {
-        foreach (var zoneName in zoneNames)
+        foreach (string zoneName in zoneNames)
+        {
             if (sceneName.Contains(zoneName))
+            {
                 return true;
-
+            }
+        }
         return false;
     }
 
     internal static bool IsInZone(string[] zoneNames)
     {
-        if (sceneContext == null) return false;
-        if (sceneContext.Player == null) return false;
-        var tracker = sceneContext.Player.GetComponent<PlayerZoneTracker>();
-        if (tracker == null) return false;
-        var zone = tracker.GetCurrentZone();
-        if (zone == null) return false;
-        foreach (var name in zoneNames)
+        if (sceneContext == null)
         {
-            if (zone.name.ToLower().Contains(name.ToLower())) return true;
+            return false;
         }
-
+        if (sceneContext.Player == null)
+        {
+            return false;
+        }
+        PlayerZoneTracker component = sceneContext.Player.GetComponent<PlayerZoneTracker>();
+        if (component == null)
+        {
+            return false;
+        }
+        ZoneDefinition currentZone = component.GetCurrentZone();
+        if (currentZone == null)
+        {
+            return false;
+        }
+        foreach (string text in zoneNames)
+        {
+            if (currentZone.name.ToLower().Contains(text.ToLower()))
+            {
+                return true;
+            }
+        }
         return false;
     }
 
-    public static void AddSpawningSettings(DirectedActorSpawner spawner, IdentifiableType ident, float weight,
-        DirectedActorSpawner.TimeWindow timeWindow, RequiredConditions requiredConditions)
+    public static void AddSpawningSettings(DirectedActorSpawner spawner, IdentifiableType ident, float weight, DirectedActorSpawner.TimeWindow timeWindow, RequiredConditions requiredConditions)
     {
-        
-        DirectedActorSpawner.SpawnConstraint constraint = null;
-        float consWeight = 0; // only used if a new constraint needs to be made.
-
-        foreach (var cons in spawner.Constraints)
+        DirectedActorSpawner.SpawnConstraint spawnConstraint = null;
+        float num = 0f;
+        foreach (DirectedActorSpawner.SpawnConstraint constraint in spawner.Constraints)
         {
-            var allConditions = Enum.GetValues<RequiredConditions>();
-            foreach (RequiredConditions con in allConditions)
+            RequiredConditions[] values = Enum.GetValues<RequiredConditions>();
+            foreach (RequiredConditions requiredConditions2 in values)
             {
-                if ((requiredConditions & con) == con)
+                if ((requiredConditions & requiredConditions2) != requiredConditions2)
                 {
-                    switch (con)
+                    continue;
+                }
+                switch (requiredConditions2)
+                {
+                case RequiredConditions.RequiresAnglerSlime:
+                {
+                    bool flag4 = false;
+                    foreach (SlimeSet.Member member in constraint.Slimeset.Members)
                     {
-                        case RequiredConditions.RequiresAnglerSlime:
-                            bool hasAngler = false;
-                            foreach (var m in cons.Slimeset.Members)
-                            {
-                                if (m.IdentType.name.ToLower() == "angler")
-                                {
-                                    hasAngler = true;
-                                    break;
-                                }
-                            }
-
-                            if (!hasAngler)
-                                return;
-                            
+                        if (member.IdentType.name.ToLower() == "angler")
+                        {
+                            flag4 = true;
                             break;
-                        case RequiredConditions.RequiresAnglerLargo:
-                            bool hasAnglerL = false;
-                            foreach (var m in cons.Slimeset.Members)
-                            {
-                                if (m.IdentType.name.ToLower().Contains("angler") && m.IdentType.Cast<SlimeDefinition>().IsLargo)
-                                {
-                                    hasAnglerL = true;
-                                    break;
-                                }
-                            }
-
-                            if (!hasAnglerL)
-                                return;
-
-                            break;
-                    
-                        case RequiredConditions.RequiresLargosOnly:
-                            bool hasNonLargo = false;
-                            foreach (var m in cons.Slimeset.Members)
-                            {
-                                if (!m.IdentType.Cast<SlimeDefinition>().IsLargo)
-                                {
-                                    hasNonLargo = true;
-                                    break;
-                                }
-                            }
-
-                            if (hasNonLargo)
-                                return;
-
-                            break;
-                    
-                        case RequiredConditions.RequiresOnlyPinkOrModdedSlimes:
-                            bool hasNonPink = false;
-                            foreach (var m in cons.Slimeset.Members)
-                            {
-                                if (m.IdentType.name.ToLower() != "pink" && !savedIdents.ContainsValue(m.IdentType))
-                                {
-                                    hasNonPink = true;
-                                    break;
-                                }
-                            }
-
-                            if (hasNonPink)
-                                return;
-
-                            break;
+                        }
                     }
+                    if (!flag4)
+                    {
+                        return;
+                    }
+                    break;
+                }
+                case RequiredConditions.RequiresAnglerLargo:
+                {
+                    bool flag2 = false;
+                    foreach (SlimeSet.Member member2 in constraint.Slimeset.Members)
+                    {
+                        if (member2.IdentType.name.ToLower().Contains("angler") && member2.IdentType.Cast<SlimeDefinition>().IsLargo)
+                        {
+                            flag2 = true;
+                            break;
+                        }
+                    }
+                    if (!flag2)
+                    {
+                        return;
+                    }
+                    break;
+                }
+                case RequiredConditions.RequiresLargosOnly:
+                {
+                    bool flag3 = false;
+                    foreach (SlimeSet.Member member3 in constraint.Slimeset.Members)
+                    {
+                        if (!member3.IdentType.Cast<SlimeDefinition>().IsLargo)
+                        {
+                            flag3 = true;
+                            break;
+                        }
+                    }
+                    if (flag3)
+                    {
+                        return;
+                    }
+                    break;
+                }
+                case RequiredConditions.RequiresOnlyPinkOrModdedSlimes:
+                {
+                    bool flag = false;
+                    foreach (SlimeSet.Member member4 in constraint.Slimeset.Members)
+                    {
+                        if (member4.IdentType.name.ToLower() != "pink" && !savedIdents.ContainsValue(member4.IdentType))
+                        {
+                            flag = true;
+                            break;
+                        }
+                    }
+                    if (flag)
+                    {
+                        return;
+                    }
+                    break;
+                }
                 }
             }
-            consWeight = ((consWeight / 2) + (cons.Weight / 2)) * 2;
-            if (cons.Window.TimeMode == timeWindow.TimeMode)
+            num = (num / 2f + constraint.Weight / 2f) * 2f;
+            if (constraint.Window.TimeMode == timeWindow.TimeMode)
             {
-                constraint = cons;
+                spawnConstraint = constraint;
                 break;
             }
         }
-
-        if (constraint == null)
+        if (spawnConstraint == null)
         {
-            constraint = new DirectedActorSpawner.SpawnConstraint();
-            constraint.Window = timeWindow;
-            constraint.Feral = false;
-            constraint.Weight = consWeight;
-            constraint.Slimeset = new SlimeSet();
-            constraint.Slimeset.Members = new Il2CppReferenceArray<SlimeSet.Member>(0);
-            spawner.Constraints = spawner.Constraints.Add(constraint);
+            spawnConstraint = new DirectedActorSpawner.SpawnConstraint();
+            spawnConstraint.Window = timeWindow;
+            spawnConstraint.Feral = false;
+            spawnConstraint.Weight = num;
+            spawnConstraint.Slimeset = new SlimeSet();
+            spawnConstraint.Slimeset.Members = new Il2CppReferenceArray<SlimeSet.Member>(0L);
+            spawner.Constraints = spawner.Constraints.Add(spawnConstraint);
         }
-
-        var member = new SlimeSet.Member()
+        SlimeSet.Member obj = new SlimeSet.Member
         {
             _prefab = ident.prefab,
             IdentType = ident,
             Weight = weight
         };
-        constraint.Slimeset.Members = constraint.Slimeset.Members.Add(member);
+        spawnConstraint.Slimeset.Members = spawnConstraint.Slimeset.Members.Add(obj);
     }
 
-    internal struct ReplacementSpawnerData
+    public static void SetResourceGrower(IdentifiableType ident, float chance, int minAmount, string spawnerObjectName, SpawnLocations zones, params string[] blacklistInSpawnerName)
     {
-        public IdentifiableType ident;
-        public float chance;
-        public string[] zones;
-    }
-
-    public static void SetResourceGrower(
-        IdentifiableType ident,
-        float chance,
-        int minAmount,
-        string spawnerObjectName,
-        SpawnLocations zones,
-        params string[] blacklistInSpawnerName)
-    {
-        onResourceGrowerAwake.Add(spawner =>
+        onResourceGrowerAwake.Add(delegate(SpawnResource spawner)
         {
-            var id = spawnerObjectName;
-            var i = 0;
-            foreach (var blacklist in blacklistInSpawnerName)
+            string text = spawnerObjectName;
+            int num = 0;
+            string[] array = blacklistInSpawnerName;
+            foreach (string value in array)
             {
-                id += $"-blacklist{i}_{blacklist}";
-                i++;
+                text += $"-blacklist{num}_{value}";
+                num++;
             }
-
-            id += $"-zones_{(int)zones}";
-            var scenes = GetSceneNamesFromSpawnerZones(zones);
-
-            bool inZone = scenes.Any(scene => spawner.gameObject.scene.name.Contains(scene));
-
-            if (!inZone) return;
-
-            if (!spawner.gameObject.name.Contains(spawnerObjectName)) return;
-
-            bool containsBlacklistedWord = blacklistInSpawnerName.Any(name => spawner.gameObject.name.Contains(name));
-
-            if (containsBlacklistedWord) return;
-
-            resourceGrowerDefinitions.TryGetValue(id, out var spawnerDefinition);
-
-            if (spawnerDefinition == null)
+            text += $"-zones_{zones}";
+            if (GetSceneNamesFromSpawnerZones(zones).Any((string scene) => spawner.gameObject.scene.name.Contains(scene)) && spawner.gameObject.name.Contains(spawnerObjectName) && !blacklistInSpawnerName.Any((string name) => spawner.gameObject.name.Contains(name)))
             {
-                spawnerDefinition = Object.Instantiate(spawner.ResourceGrowerDefinition);
-                spawnerDefinition.name = id;
-                Object.DontDestroyOnLoad(spawnerDefinition);
-            }
-
-            var _ = spawnerDefinition._resources.FirstOrDefault(x => x.ResourceIdentifiableType.name == ident.name);
-            if (_ == null)
-                spawnerDefinition._resources = spawnerDefinition._resources.Add(
-                    new ResourceSpawnerDefinition.WeightedResourceEntry()
+                resourceGrowerDefinitions.TryGetValue(text, out var value2);
+                if (value2 == null)
+                {
+                    value2 = UnityEngine.Object.Instantiate(spawner.ResourceGrowerDefinition);
+                    value2.name = text;
+                    UnityEngine.Object.DontDestroyOnLoad(value2);
+                }
+                if (value2._resources.FirstOrDefault((ResourceSpawnerDefinition.WeightedResourceEntry x) => x.ResourceIdentifiableType.name == ident.name) == null)
+                {
+                    value2._resources = value2._resources.Add(new ResourceSpawnerDefinition.WeightedResourceEntry
                     {
                         MinimumAmount = minAmount,
                         ResourceIdentifiableType = ident,
                         Weight = chance
                     });
-
-            spawner._resourceGrowerDefinition = spawnerDefinition;
-
-            resourceGrowerDefinitions.TryAdd(id, spawnerDefinition);
+                }
+                spawner._resourceGrowerDefinition = value2;
+                resourceGrowerDefinitions.TryAdd(text, value2);
+            }
         });
     }
 
-    public static void CreateGordoSpawnLocation(IdentifiableType ident, SpawnLocations zone, Vector3 position,
-        Vector3 rotation, string cottonIdentifier)
+    public static void CreateGordoSpawnLocation(IdentifiableType ident, SpawnLocations zone, Vector3 position, Vector3 rotation, string cottonIdentifier)
     {
-        var sceneName = GetSceneNamesFromSpawnerZones(zone)[0];
-
-        if (!onSceneLoaded.TryGetValue(sceneName, out var actions))
+        string key = GetSceneNamesFromSpawnerZones(zone)[0];
+        if (!onSceneLoaded.TryGetValue(key, out var value))
         {
-            actions = new List<Action>();
-            onSceneLoaded.Add(sceneName, actions);
+            value = new System.Collections.Generic.List<Action>();
+            onSceneLoaded.Add(key, value);
         }
-
-        actions.Add(() =>
+        value.Add(delegate
         {
-            if (gordos.TryGetValue(cottonIdentifier, out var obj))
-                if (obj == null)
-                    gordos[cottonIdentifier] =
-                        InstantiationHelpers.InstantiateDynamic(ident.prefab, position, Quaternion.Euler(rotation));
-                else
-                    return;
+            if (gordos.TryGetValue(cottonIdentifier, out var value2))
+            {
+                if (value2 == null)
+                {
+                    gordos[cottonIdentifier] = InstantiationHelpers.InstantiateDynamic(ident.prefab, position, Quaternion.Euler(rotation));
+                }
+            }
             else
-                gordos.Add(cottonIdentifier,
-                    InstantiationHelpers.InstantiateDynamic(ident.prefab, position, Quaternion.Euler(rotation)));
-            
+            {
+                gordos.Add(cottonIdentifier, InstantiationHelpers.InstantiateDynamic(ident.prefab, position, Quaternion.Euler(rotation)));
+            }
         });
     }
-
-    public static Dictionary<string, GameObject> gordos = new Dictionary<string, GameObject>(); 
-    
-    public static Dictionary<string, List<Action>> onSceneLoaded = new Dictionary<string, List<Action>>();
-    
-    public static Dictionary<string, ResourceGrowerDefinition> resourceGrowerDefinitions = new();
-    
-    internal static List<Action<SpawnResource>> onResourceGrowerAwake = new ();
 }
