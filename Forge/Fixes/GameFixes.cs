@@ -102,8 +102,8 @@ namespace CottonLibrary.Forge
     }
 
     /// <summary>
-    /// Read-only save diagnostics: a save that references a slime type which is no longer registered (mod removed, a largo
-    /// whose saving failed) breaks loading of the radiant-slime block. Such entries are logged (the save is not modified).
+    /// Save sanitization and diagnostics: removes unregistered slime IDs from RadiantSlimesV03 (collected, shuffle bags,
+    /// and lost queue) before RadiantSlimesModel.Push runs so removed mods or disabled slimes never break save loads.
     /// </summary>
     [HarmonyPatch(typeof(RadiantSlimesModel), nameof(RadiantSlimesModel.Push))]
     static class RadiantPushDiag
@@ -115,18 +115,114 @@ namespace CottonLibrary.Forge
         {
             if (persistence == null || lookups == null) return;
             var unknown = new List<string>();
+            var badCollected = new List<int>();
+            var badBags = new List<int>();
             try
             {
                 if (persistence.RadiantsCollected != null)
-                    foreach (var kv in persistence.RadiantsCollected) if (!Known(lookups, kv.Key)) unknown.Add("collected:" + Name(lookups, kv.Key));
+                {
+                    foreach (var kv in persistence.RadiantsCollected)
+                        if (!Known(lookups, kv.Key)) { badCollected.Add(kv.Key); unknown.Add("collected:" + Name(lookups, kv.Key)); }
+                    foreach (var k in badCollected) persistence.RadiantsCollected.Remove(k);
+                }
                 if (persistence.RadiantShuffleBags != null)
-                    foreach (var kv in persistence.RadiantShuffleBags) if (!Known(lookups, kv.Key)) unknown.Add("bag:" + Name(lookups, kv.Key));
-                if (persistence.LostRadiantIdQueue != null)
-                    foreach (var id in persistence.LostRadiantIdQueue) if (!Known(lookups, id)) unknown.Add("lost:" + Name(lookups, id));
+                {
+                    foreach (var kv in persistence.RadiantShuffleBags)
+                        if (!Known(lookups, kv.Key)) { badBags.Add(kv.Key); unknown.Add("bag:" + Name(lookups, kv.Key)); }
+                    foreach (var k in badBags) persistence.RadiantShuffleBags.Remove(k);
+                }
+                var lostIds = persistence.LostRadiantIdQueue;
+                var lostTimes = persistence.LostRadiantTimeQueue;
+                if (lostIds != null)
+                {
+                    for (int i = lostIds.Count - 1; i >= 0; i--)
+                    {
+                        int id = lostIds[i];
+                        if (Known(lookups, id)) continue;
+                        unknown.Add("lost:" + Name(lookups, id));
+                        lostIds.RemoveAt(i);
+                        if (lostTimes != null && i < lostTimes.Count) lostTimes.RemoveAt(i);
+                    }
+                }
             }
             catch (Exception e) { ForgeLog.Warn("[save] radiant diag: " + e.Message); }
             if (unknown.Count > 0)
-                ForgeLog.Warn($"[save] radiant-slime data references {unknown.Count} unregistered slime type(s): {string.Join(", ", unknown)}");
+                ForgeLog.Warn($"[save] radiant-slime data pruned {unknown.Count} unregistered slime type(s): {string.Join(", ", unknown)}");
         }
+    }
+
+    /// <summary>
+    /// Prevents NullReferenceException inside SlimeRadiant.SetRadiantAppearance when a saved radiant slime/largo
+    /// references a parent or variant whose radiant appearance does not exist or was disabled in config.
+    /// </summary>
+    [HarmonyPatch(typeof(Il2CppMonomiPark.SlimeRancher.Slime.SlimeRadiant), nameof(Il2CppMonomiPark.SlimeRancher.Slime.SlimeRadiant.SetRadiantAppearance))]
+    static class SlimeRadiantAppearanceGuard
+    {
+        static bool Prefix(Il2CppMonomiPark.SlimeRancher.Slime.SlimeRadiant __instance, ref SlimeDefinition radiantBaseSlimeDef)
+        {
+            try
+            {
+                if (__instance == null) return true;
+                var def = __instance.GetComponent<Identifiable>()?.identType?.TryCast<SlimeDefinition>();
+                if (def == null) return true;
+                if (!def.IsLargo)
+                {
+                    if (def.RadiantBase != null) return true;
+                    if (__instance._slimeModel != null) __instance._slimeModel.RadiantBaseType = null;
+                    return false;
+                }
+                if (radiantBaseSlimeDef != null)
+                {
+                    SlimeAppearance cur = null;
+                    try { cur = def.GetRadiantAppearance(radiantBaseSlimeDef); } catch { }
+                    if (cur != null) return true;
+                }
+                var bases = def.BaseSlimes;
+                if (bases != null)
+                {
+                    for (int i = 0; i < bases.Length; i++)
+                    {
+                        var bs = bases[i];
+                        if (bs == null) continue;
+                        SlimeAppearance alt = null;
+                        try { alt = def.GetRadiantAppearance(bs); } catch { }
+                        if (alt != null)
+                        {
+                            radiantBaseSlimeDef = bs;
+                            if (__instance._slimeModel != null) __instance._slimeModel.RadiantBaseType = bs;
+                            return true;
+                        }
+                    }
+                }
+                if (__instance._slimeModel != null) __instance._slimeModel.RadiantBaseType = null;
+                return false;
+            }
+            catch { return true; }
+        }
+
+        static Exception Finalizer(Il2CppMonomiPark.SlimeRancher.Slime.SlimeRadiant __instance, Exception __exception)
+        {
+            if (__exception == null) return null;
+            try
+            {
+                ForgeLog.WarnOnce("radapp:" + (__instance != null ? __instance.name : "?"), $"[save] SetRadiantAppearance recovered from {__exception.GetType().Name}: {__exception.Message}");
+                if (__instance != null && __instance._slimeModel != null) __instance._slimeModel.RadiantBaseType = null;
+            }
+            catch { }
+            return null;
+        }
+    }
+
+    /// <summary>Keeps modded PediaEntry persistence IDs in SaveReferenceTranslation when vanilla rebuilds the list or pushes saves.</summary>
+    [HarmonyPatch(typeof(SaveReferenceTranslation), nameof(SaveReferenceTranslation.OnPediaEntryListChanged))]
+    static class PediaLookupRefreshPatch
+    {
+        static void Postfix(SaveReferenceTranslation __instance) => Library.INTERNAL_RefreshAllPediaEntries(__instance);
+    }
+
+    [HarmonyPatch(typeof(GameModelPushHelpers), nameof(GameModelPushHelpers.PushPedia))]
+    static class PushPediaSyncPatch
+    {
+        static void Prefix() => Library.INTERNAL_RefreshAllPediaEntries(null);
     }
 }

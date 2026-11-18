@@ -795,7 +795,7 @@ namespace CottonLibrary.Forge
                 v[s] = va;
                 RadiantVariants++;
             }
-            SlimeAppearance r0 = v[f0] ?? v[1 - f0], r1 = v[1 - f0] ?? v[f0];
+            SlimeAppearance r0 = v[f0], r1 = v[1 - f0];
             var list = new List<SlimeAppearance> { app0 };
             if (r0 != null) list.Add(r0);
             if (r1 != null && !Same(r1, r0)) list.Add(r1);

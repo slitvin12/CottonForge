@@ -13,7 +13,7 @@ namespace CottonLibrary.Forge
     public static class ForgeCore
     {
         /// <summary>Version of this Cotton fork (also in <c>MelonInfo</c>).</summary>
-        public const string Version = "0.3.2";
+        public const string Version = "0.3.3";
         /// <summary>Upstream Cotton release this fork is based on.</summary>
         public const string BasedOn = "0.3.1";
         /// <summary>

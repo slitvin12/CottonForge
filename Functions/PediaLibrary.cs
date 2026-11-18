@@ -160,9 +160,107 @@ public static partial class Library
             };
         }
         pediaEntries[category].Add(identifiablePediaEntry);
-        identifiablePediaEntry.name = persistID;
         identifiablePediaEntry._identifiableType._pediaPersistenceSuffix = persistID;
+        RegisterPediaPersistence(identifiablePediaEntry, persistID, false);
         return identifiablePediaEntry;
+    }
+
+    internal static void RegisterPediaPersistence(PediaEntry entry, string persistID = null, bool overwritePersistenceId = false)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+        try
+        {
+            UnityEngine.Object.DontDestroyOnLoad(entry);
+            entry.hideFlags |= HideFlags.DontUnloadUnusedAsset;
+        }
+        catch { }
+        if (!string.IsNullOrEmpty(persistID))
+        {
+            entry.name = persistID;
+            if (overwritePersistenceId && string.IsNullOrEmpty(entry._persistenceId))
+            {
+                entry._persistenceId = persistID;
+            }
+        }
+        try
+        {
+            var lookup = gameContext?.AutoSaveDirector?._saveReferenceTranslation?._pediaEntryLookup;
+            if (lookup == null)
+            {
+                return;
+            }
+            RegisterEntryKeys(lookup, entry, persistID, !string.IsNullOrEmpty(persistID));
+        }
+        catch { }
+    }
+
+    private static void RegisterEntryKeys(
+        Il2CppSystem.Collections.Generic.Dictionary<string, PediaEntry> lookup,
+        PediaEntry entry,
+        string persistID = null,
+        bool addLegacyAliases = false)
+    {
+        if (lookup == null || entry == null)
+        {
+            return;
+        }
+        string pid = null;
+        try { pid = entry.PersistenceId; } catch { }
+        if (!string.IsNullOrEmpty(pid) && !lookup.ContainsKey(pid))
+        {
+            lookup[pid] = entry;
+        }
+        if (!string.IsNullOrEmpty(persistID) && !lookup.ContainsKey(persistID))
+        {
+            lookup[persistID] = entry;
+        }
+        string nm = entry.name;
+        if (!string.IsNullOrEmpty(nm) && !lookup.ContainsKey(nm))
+        {
+            lookup[nm] = entry;
+        }
+        if (addLegacyAliases && !string.IsNullOrEmpty(nm) && !nm.Contains('.'))
+        {
+            string k1 = "Pink." + nm;
+            string k2 = "CarrotVeggie." + nm;
+            string k3 = "PogoFruit." + nm;
+            if (!lookup.ContainsKey(k1)) lookup[k1] = entry;
+            if (!lookup.ContainsKey(k2)) lookup[k2] = entry;
+            if (!lookup.ContainsKey(k3)) lookup[k3] = entry;
+        }
+    }
+
+    internal static void INTERNAL_RefreshAllPediaEntries(SaveReferenceTranslation srt = null)
+    {
+        try
+        {
+            srt ??= gameContext?.AutoSaveDirector?._saveReferenceTranslation;
+            var lookup = srt?._pediaEntryLookup;
+            if (lookup == null)
+            {
+                return;
+            }
+            var modded = new System.Collections.Generic.HashSet<IntPtr>();
+            foreach (var list in pediaEntries.Values)
+            {
+                if (list == null) continue;
+                foreach (var entry in list)
+                {
+                    if (entry == null) continue;
+                    modded.Add(entry.Pointer);
+                    RegisterEntryKeys(lookup, entry, null, true);
+                }
+            }
+            foreach (var pe in Resources.FindObjectsOfTypeAll<PediaEntry>())
+            {
+                if (pe == null) continue;
+                RegisterEntryKeys(lookup, pe, null, modded.Contains(pe.Pointer));
+            }
+        }
+        catch { }
     }
 
     public static FixedPediaEntry CreateFixedPediaEntry(FixedPediaEntry baseEntry, string persistID, LocalizedString title, LocalizedString intro, Sprite icon, PediaCategoryType category, PediaDetail[] details)
@@ -193,8 +291,8 @@ public static partial class Library
             };
         }
         pediaEntries[category].Add(fixedPediaEntry);
-        fixedPediaEntry.name = persistID;
         fixedPediaEntry._persistenceSuffix = persistID;
+        RegisterPediaPersistence(fixedPediaEntry, persistID, true);
         return fixedPediaEntry;
     }
 }

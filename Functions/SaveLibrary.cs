@@ -44,15 +44,26 @@ public static partial class Library
             {
                 saveReferenceTranslation._identifiableTypeLookup.TryAdd(RefID, ident);
                 PersistenceIdLookupTable<IdentifiableType> identifiableTypeToPersistenceId = saveReferenceTranslation._identifiableTypeToPersistenceId;
-                if (identifiableTypeToPersistenceId != null)
+                if (identifiableTypeToPersistenceId != null && identifiableTypeToPersistenceId._primaryIndex != null && identifiableTypeToPersistenceId._primaryIndex.Count > 0)
                 {
-                    if (identifiableTypeToPersistenceId._primaryIndex != null && identifiableTypeToPersistenceId._primaryIndex.Count > 0 && !identifiableTypeToPersistenceId._primaryIndex.Contains(RefID))
+                    Il2CppStringArray prim = identifiableTypeToPersistenceId._primaryIndex;
+                    int idx = -1;
+                    for (int pi = 0; pi < prim.Length; pi++)
                     {
-                        identifiableTypeToPersistenceId._primaryIndex = identifiableTypeToPersistenceId._primaryIndex.AddString(RefID);
+                        if (prim[pi] == RefID)
+                        {
+                            idx = pi;
+                            break;
+                        }
+                    }
+                    if (idx < 0)
+                    {
+                        idx = prim.Length;
+                        identifiableTypeToPersistenceId._primaryIndex = CottonLibrary.Forge.Gc.StringArrayAppend(prim, RefID);
                     }
                     if (identifiableTypeToPersistenceId._reverseIndex != null)
                     {
-                        identifiableTypeToPersistenceId._reverseIndex.TryAdd(RefID, identifiableTypeToPersistenceId._reverseIndex.Count);
+                        identifiableTypeToPersistenceId._reverseIndex[RefID] = idx;
                     }
                 }
             }

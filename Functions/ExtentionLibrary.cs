@@ -272,15 +272,7 @@ public static class ExtentionLibrary
 
     public static Il2CppStringArray AddString(this Il2CppStringArray array, string str)
     {
-        string[] array2 = new string[array.Count + 1];
-        int num = 0;
-        foreach (string item in array)
-        {
-            array2[num] = item;
-            num++;
-        }
-        array2[num] = str;
-        return new Il2CppStringArray(array2);
+        return CottonLibrary.Forge.Gc.StringArrayAppend(array, str);
     }
 
     public static void MakePrefab(this GameObject obj)

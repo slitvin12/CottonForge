@@ -1,4 +1,4 @@
-# CottonForge 0.3.2 — форк Cotton Library
+# CottonForge 0.3.3 — форк Cotton Library
 
 **CottonForge** — форк [Cotton Library](https://gitlab.com/thean-mcgarity/CottonLibrary) (автор — PinkTarr) для Slime Rancher 2.
 Это **прямая замена** `CottonLibrary.dll`: то же имя сборки, те же пространства имён и весь публичный API версии 0.3.1.
@@ -33,7 +33,7 @@
 2. Если в `Slime Rancher 2\Mods` уже есть оригинальный `CottonLibrary.dll` — убрать его из `Mods` (или переименовать
    в `CottonLibrary.dll.orig`): два Cotton одновременно ставить нельзя.
 3. Положить `CottonLibrary.dll` из CottonForge в `Mods` (и при желании `CottonLibrary.xml` — подсказки в IDE).
-4. В логе MelonLoader: `CottonForge 0.3.2 (fork of Cotton Library 0.3.1; build 0.3.2+<ревизия>, assembly 1.0.0.0): patches N on, 0 off, 0 failed ...`.
+4. В логе MelonLoader: `CottonForge 0.3.3 (fork of Cotton Library 0.3.1; build 0.3.3+<ревизия>, assembly 1.0.0.0): patches N on, 0 off, 0 failed ...`.
 
 Почему файл называется `CottonLibrary.dll`: это прямая замена — все Cotton-моды ссылаются на сборку
 `CottonLibrary` (версия 1.0.0.0), поэтому имя сборки и файла не меняются. В списке модов MelonLoader и в логе она
@@ -49,7 +49,7 @@ dotnet build CottonLibrary.csproj -c Release -p:Deploy=true   :: + копия в
 ```
 
 Версии: `AssemblyVersion` всегда `1.0.0.0` (моды собраны против неё — не понижать и не менять), версия форка — в
-`FileVersion` (`0.3.2.0`) и `InformationalVersion` (`0.3.2+<git short rev>`, суффикс `.dirty` — собрано с незакоммиченными
+`FileVersion` (`0.3.3.0`) и `InformationalVersion` (`0.3.3+<git short rev>`, суффикс `.dirty` — собрано с незакоммиченными
 правками). Тот же идентификатор пишется в лог при старте и в команде `info` (`ForgeCore.Build`).
 
 Ссылки берутся из `Libs\` (как в upstream), если там есть сборки, иначе из папки игры (`-p:SR2Dir=...`, по умолчанию
@@ -76,6 +76,9 @@ dotnet build CottonLibrary.csproj -c Release -p:Deploy=true   :: + копия в
 | `CreateCompleteLargo` всегда удаляет `RockSlimeRoll` и `DamagePlayerOnTouch` — ларго Rock не катятся | при `SmartLargos` удаляются, только если их нет у родителей |
 | `CreateCompleteLargo` обновляет карты еды родителей до `RefreshIndexes` — родитель не превращается в своё новое ларго (Mosaic + Sloomber давал старое) | `RefreshEatmap` родителей после `RefreshIndexes` |
 | `SaveLibrary`: проверка `Slimes.Contains` сравнивает обёртки IL2CPP, а не объекты — ларго попадало в `SlimeDefinitions.Slimes` до сотни раз | сравнение по указателю |
+| `SaveLibrary` (0.3.3): рассинхронизация `_primaryIndex.Length` и `_reverseIndex.Count`, запись строк `AddString` без write-barrier, потеря `Gc.Array<T>` проверки value-type | единый индекс из `_primaryIndex.Length`, write-barrier `StringArrayAppend`, проверка `il2cpp_class_is_valuetype` |
+| `PediaLibrary` (0.3.3): клонированные `PediaEntry` не задавали `_persistenceId` / `DontDestroyOnLoad` и сбрасывались на пресет `pink` при перезагрузке | прописывается `_persistenceId`, `DontDestroyOnLoad` и автовосстановление `_pediaEntryLookup` |
+| `SlimeLibrary` / `LargoBlend` (0.3.3): `DoesLargoComboExist` искал подстроку вместо пары, `CreateGordoType` без `DontDestroyOnLoad`, кросс-слот radiant у не-radiant родителя | точное совпадение `AB`/`BA`, обратный alias `SlimeDefinition.BA`, `DontDestroyOnLoad` для гордо и раздельные radiant-слоты |
 
 Патчи методов игры (`Forge/Fixes/GameFixes.cs`, включаются в настройках):
 
@@ -84,7 +87,7 @@ dotnet build CottonLibrary.csproj -c Release -p:Deploy=true   :: + копия в
 | Слайм попадает в `SlimeDefinitions.Slimes` несколько раз (тысячи ошибок «same key» на каждом `RefreshIndexes`) | дубли убираются перед `RefreshIndexes` | `FixDuplicateSlimes` |
 | У ларго Cotton сломаны `SlimeModules` и список поведений `SubbehaviourPlexer` (стоят, сыплют NRE) | ремонт после генерации и при первой загрузке сохранения | `FixLargoAI` |
 | GC во время генерации контента (`AutoSaveDirector.Awake`) — редкие вылеты `0xc0000005` | пауза GC на этот кадр | `SafeGc` |
-| Сохранение ссылается на незарегистрированного слайма — ломается загрузка блока radiant-слаймов | диагностика в логе (сохранение не меняется) | — |
+| Сохранение ссылается на незарегистрированного слайма (включая `LostRadiantIdQueue`), пропавший radiant-вариант или перезаписанный `_pediaEntryLookup` | очистка неизвестных radiant-записей (включая `LostRadiantIdQueue`/`LostRadiantTimeQueue`), защита `SlimeRadiant.SetRadiantAppearance` и обновление `_pediaEntryLookup` | — |
 
 Известное, оставлено как в 0.3.1: у `RefreshEatmapPatch` нет атрибута `[HarmonyPatch]` на классе, поэтому ни Harmony, ни форк
 его не применяют. Если включить, поменяется поведение диет — сначала нужно проверить в игре.

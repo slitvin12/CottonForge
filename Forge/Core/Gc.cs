@@ -81,6 +81,11 @@ namespace CottonLibrary.Forge
         public static Il2CppReferenceArray<T> Array<T>(IList<T> items) where T : Il2CppObjectBase
         {
             var arr = new Il2CppReferenceArray<T>(items.Count);
+            if (IL2CPP.il2cpp_class_is_valuetype(Il2CppClassPointerStore<T>.NativeClassPtr))
+            {
+                for (int i = 0; i < items.Count; i++) arr[i] = items[i];
+                return arr;
+            }
             for (int i = 0; i < items.Count; i++)
                 IL2CPP.il2cpp_gc_wbarrier_set_field(arr.Pointer, ElementAddress(arr.Pointer, i), (object)items[i] == null ? IntPtr.Zero : items[i].Pointer);
             return arr;
@@ -91,6 +96,11 @@ namespace CottonLibrary.Forge
         {
             if (array == null) throw new ArgumentNullException(nameof(array));
             if (index < 0 || index >= array.Length) throw new ArgumentOutOfRangeException(nameof(index));
+            if (IL2CPP.il2cpp_class_is_valuetype(Il2CppClassPointerStore<T>.NativeClassPtr))
+            {
+                array[index] = value;
+                return;
+            }
             IL2CPP.il2cpp_gc_wbarrier_set_field(array.Pointer, ElementAddress(array.Pointer, index), (object)value == null ? IntPtr.Zero : value.Pointer);
         }
 
@@ -101,6 +111,20 @@ namespace CottonLibrary.Forge
             if (array != null) foreach (var x in array) list.Add(x);
             list.Add(item);
             return Array(list);
+        }
+
+        /// <summary>Copy of <paramref name="array"/> with <paramref name="item"/> appended using the IL2CPP GC write barrier.</summary>
+        public static Il2CppStringArray StringArrayAppend(Il2CppStringArray array, string item)
+        {
+            int len = array != null ? array.Length : 0;
+            var res = new Il2CppStringArray(len + 1);
+            for (int i = 0; i < len; i++)
+            {
+                string s = array[i];
+                IL2CPP.il2cpp_gc_wbarrier_set_field(res.Pointer, ElementAddress(res.Pointer, i), s == null ? IntPtr.Zero : IL2CPP.ManagedStringToIl2Cpp(s));
+            }
+            IL2CPP.il2cpp_gc_wbarrier_set_field(res.Pointer, ElementAddress(res.Pointer, len), item == null ? IntPtr.Zero : IL2CPP.ManagedStringToIl2Cpp(item));
+            return res;
         }
     }
 }

@@ -180,9 +180,11 @@ public static partial class Library
         {
         }
         bool result = false;
+        string ab = slime1.name + " " + slime2.name;
+        string ba = slime2.name + " " + slime1.name;
         foreach (string largoCombo in largoCombos)
         {
-            if (largoCombo.Contains(slime1.name) && largoCombo.Contains(slime2.name))
+            if (largoCombo == ab || largoCombo == ba)
             {
                 result = true;
                 break;
@@ -1131,6 +1133,16 @@ public static partial class Library
         slimeDefinition.AddToGroup("SlimesGroup");
         INTERNAL_AddLargoToBaseGroups(slimeDefinition, slimeOne, slimeTwo);
         INTERNAL_SetupLoadForIdent(slimeDefinition.referenceId, slimeDefinition);
+        try
+        {
+            string reverseRefID = "SlimeDefinition." + slimeTwo.name + slimeOne.name;
+            if (!string.Equals(reverseRefID, slimeDefinition.referenceId, StringComparison.Ordinal))
+            {
+                gameContext?.AutoSaveDirector?._saveReferenceTranslation?._identifiableTypeLookup?.TryAdd(reverseRefID, slimeDefinition);
+                gameContext?.LookupDirector?._identifiableTypeByRefId?.TryAdd(reverseRefID, slimeDefinition);
+            }
+        }
+        catch { }
         largoCombos.Add(slimeOne.name + " " + slimeTwo.name);
         slimeDefinitions.RefreshDefinitions();
         slimeDefinitions.RefreshIndexes();
@@ -1552,6 +1564,8 @@ public static partial class Library
     public static IdentifiableType CreateGordoType(string name, Sprite icon, LocalizedString localizedName, string refID)
     {
         IdentifiableType identifiableType = UnityEngine.Object.Instantiate(Get<IdentifiableType>("PinkGordo"));
+        UnityEngine.Object.DontDestroyOnLoad(identifiableType);
+        identifiableType.hideFlags = HideFlags.HideAndDontSave;
         identifiableType.name = name + "Gordo";
         identifiableType.icon = icon;
         identifiableType.localizedName = localizedName;

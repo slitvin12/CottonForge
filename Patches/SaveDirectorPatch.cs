@@ -88,6 +88,7 @@ public static class SaveDirectorPatch
         try
         {
             Library.INTERNAL_RefreshAllSavedIdents();
+            Library.INTERNAL_RefreshAllPediaEntries();
         }
         catch (Exception value5)
         {
